@@ -167,21 +167,33 @@ export const updateProduct = asyncHandler(async (req, res) => {
     throw new ApiError(404, "Product not found.");
   }
 
-  const fields = [
-    "name",
-    "price",
-    "description",
-    "category",
-    "isFlashSale",
-    "discountPrice",
-    "flashSaleEndTime",
-  ];
+  if (req.body.name !== undefined) {
+    product.name = req.body.name;
+  }
 
-  fields.forEach((field) => {
-    if (req.body[field] !== undefined) {
-      product[field] = req.body[field];
-    }
-  });
+  if (req.body.price !== undefined) {
+    product.price = Number(req.body.price);
+  }
+
+  if (req.body.description !== undefined) {
+    product.description = req.body.description;
+  }
+
+  if (req.body.category !== undefined) {
+    product.category = req.body.category;
+  }
+
+  if (req.body.isFlashSale !== undefined) {
+    product.isFlashSale = req.body.isFlashSale === "true" || req.body.isFlashSale === true;
+  }
+
+  if (req.body.discountPrice !== undefined) {
+    product.discountPrice = req.body.discountPrice ? Number(req.body.discountPrice) : undefined;
+  }
+
+  if (req.body.flashSaleEndTime !== undefined) {
+    product.flashSaleEndTime = req.body.flashSaleEndTime || undefined;
+  }
 
   if (req.files?.length) {
     const imagePaths = req.files.map((file) => `/uploads/products/${file.filename}`);

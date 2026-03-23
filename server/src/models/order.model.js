@@ -100,6 +100,7 @@ const orderSchema = new mongoose.Schema(
     vendorTransferCode: String,
     vendorTransferStatus: String,
     vendorTransferQueuedAt: Date,
+    payoutRequestedAt: Date,
     cancelableUntil: Date,
     paidAt: Date,
     shippedAt: Date,

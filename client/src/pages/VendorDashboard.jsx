@@ -33,6 +33,9 @@ export const VendorDashboard = () => {
   const [products, setProducts] = useState([]);
   const [banks, setBanks] = useState([]);
   const [form, setForm] = useState(initialProduct);
+  const [editingProductId, setEditingProductId] = useState("");
+  const [editForm, setEditForm] = useState(initialProduct);
+  const [editCurrentImages, setEditCurrentImages] = useState([]);
   const [payoutForm, setPayoutForm] = useState({
     bankCode: "",
     accountNumber: "",
@@ -44,12 +47,23 @@ export const VendorDashboard = () => {
     () => form.images.map((file) => ({ name: file.name, url: URL.createObjectURL(file) })),
     [form.images],
   );
+  const editImagePreviews = useMemo(
+    () => editForm.images.map((file) => ({ name: file.name, url: URL.createObjectURL(file) })),
+    [editForm.images],
+  );
 
   useEffect(
     () => () => {
       imagePreviews.forEach((preview) => URL.revokeObjectURL(preview.url));
     },
     [imagePreviews],
+  );
+
+  useEffect(
+    () => () => {
+      editImagePreviews.forEach((preview) => URL.revokeObjectURL(preview.url));
+    },
+    [editImagePreviews],
   );
 
   const loadDashboard = async () => {
@@ -156,17 +170,75 @@ export const VendorDashboard = () => {
     }
   };
 
+  const startEditingProduct = (product) => {
+    setEditingProductId(product._id);
+    setEditCurrentImages(product.images?.length ? product.images : product.image ? [product.image] : []);
+    setEditForm({
+      name: product.name || "",
+      price: String(product.price || ""),
+      description: product.description || "",
+      category: product.category || productCategories[0],
+      isFlashSale: Boolean(product.isFlashSale),
+      discountPrice: product.discountPrice ? String(product.discountPrice) : "",
+      flashSaleEndTime: product.flashSaleEndTime
+        ? new Date(product.flashSaleEndTime).toISOString().slice(0, 16)
+        : "",
+      images: [],
+    });
+    setError("");
+    setMessage("");
+  };
+
+  const cancelEditingProduct = () => {
+    setEditingProductId("");
+    setEditCurrentImages([]);
+    setEditForm(initialProduct);
+  };
+
+  const saveProductChanges = async (productId) => {
+    const formData = new FormData();
+    formData.append("name", editForm.name);
+    formData.append("price", editForm.price);
+    formData.append("description", editForm.description);
+    formData.append("category", editForm.category);
+    formData.append("isFlashSale", String(editForm.isFlashSale));
+    formData.append("discountPrice", editForm.discountPrice);
+    formData.append("flashSaleEndTime", editForm.flashSaleEndTime);
+
+    editForm.images.forEach((image) => {
+      formData.append("images", image);
+    });
+
+    try {
+      setError("");
+      await apiRequest(`/api/products/${productId}`, {
+        method: "PATCH",
+        body: formData,
+      });
+      setMessage("Product updated successfully.");
+      cancelEditingProduct();
+      await loadDashboard();
+    } catch (requestError) {
+      setError(requestError.message);
+    }
+  };
+
   const earnings = orders
     .filter((order) => order.paymentReleased)
     .reduce((sum, order) => sum + order.totalAmount, 0);
 
+  const securedEarnings = orders
+    .filter((order) => ["processing", "shipped", "delivered", "completed"].includes(order.status))
+    .reduce((sum, order) => sum + order.totalAmount, 0);
+
   return (
     <div className="space-y-6">
-      <section className="grid gap-5 lg:grid-cols-4">
+      <section className="grid gap-5 lg:grid-cols-5">
         {[
           ["Verification", profile?.verified ? "Approved" : "Pending review"],
           ["Registration fee", profile?.paymentStatus || "pending"],
           ["Orders", String(orders.length)],
+          ["Secured earnings", `NGN ${securedEarnings.toLocaleString()}`],
           ["Released earnings", `NGN ${earnings.toLocaleString()}`],
         ].map(([label, value]) => (
           <div key={label} className="surface-card p-5">
@@ -361,6 +433,18 @@ export const VendorDashboard = () => {
                 orders.map((order) => {
                   const isCanceled = order.status === "canceled";
                   const isCompleted = order.status === "completed";
+                  const payoutReleased = Boolean(order.paymentReleased);
+                  const payoutRequested = Boolean(order.payoutRequestedAt);
+                  const payoutStatusCopy =
+                    {
+                      payment_secured: "Payment secured",
+                      awaiting_payout_request: "Ready for payout request",
+                      payout_requested: "Payout requested",
+                      awaiting_payout_setup: "Add payout details",
+                      release_pending: "Payout pending",
+                      pending: "Payout queued",
+                      success: "Payout released",
+                    }[order.vendorTransferStatus] || "";
 
                   return (
                     <div
@@ -427,6 +511,11 @@ export const VendorDashboard = () => {
                             <p className="text-sm text-staps-ink/60">
                               {order.deliveryDetails?.address || "No delivery address"}
                             </p>
+                            {payoutStatusCopy ? (
+                              <p className="mt-2 text-xs font-semibold uppercase tracking-[0.16em] text-[#5a49d6]">
+                                {payoutStatusCopy}
+                              </p>
+                            ) : null}
                           </div>
                         </div>
                         <div className="flex flex-wrap gap-2">
@@ -449,13 +538,29 @@ export const VendorDashboard = () => {
                             </button>
                           )}
                           {order.status === "shipped" && (
-                            <button
-                              className="secondary-button"
-                              type="button"
-                              onClick={() => updateOrderStatus(order._id, "delivered")}
-                            >
-                              Mark delivered
-                            </button>
+                            <>
+                              {!payoutReleased && (
+                                <button
+                                  className="secondary-button"
+                                  type="button"
+                                  onClick={() => updateOrderStatus(order._id, "request-payout")}
+                                >
+                                  {payoutRequested ? "Payout requested" : "Request payout"}
+                                </button>
+                              )}
+                              <button
+                                className="secondary-button"
+                                type="button"
+                                onClick={() => updateOrderStatus(order._id, "delivered")}
+                              >
+                                Mark delivered
+                              </button>
+                            </>
+                          )}
+                          {payoutReleased && (
+                            <div className="rounded-2xl bg-white px-4 py-3 text-sm font-semibold text-emerald-700">
+                              Payout released
+                            </div>
                           )}
                           {isCanceled && (
                             <div className="rounded-2xl bg-white px-4 py-3 text-sm font-semibold text-red-600">
@@ -513,13 +618,188 @@ export const VendorDashboard = () => {
                       <p className="mt-2 text-xs text-staps-ink/55">
                         {product.images?.length || (product.image ? 1 : 0)} image(s) uploaded
                       </p>
-                      <button
-                        type="button"
-                        onClick={() => delistProduct(product._id, product.name)}
-                        className="secondary-button mt-4 w-full border-red-200 bg-white text-red-600 hover:bg-red-50"
-                      >
-                        Delist product
-                      </button>
+                      <div className="mt-4 flex flex-col gap-2">
+                        <button
+                          type="button"
+                          onClick={() =>
+                            editingProductId === product._id
+                              ? cancelEditingProduct()
+                              : startEditingProduct(product)
+                          }
+                          className="secondary-button w-full"
+                        >
+                          {editingProductId === product._id ? "Close editor" : "Edit listing"}
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => delistProduct(product._id, product.name)}
+                          className="secondary-button w-full border-red-200 bg-white text-red-600 hover:bg-red-50"
+                        >
+                          Delist product
+                        </button>
+                      </div>
+
+                      {editingProductId === product._id && (
+                        <div className="mt-4 space-y-3 rounded-[1.4rem] border border-staps-ink/10 bg-white p-4">
+                          <p className="text-xs font-bold uppercase tracking-[0.18em] text-[#644df0]">
+                            Edit listing
+                          </p>
+                          <input
+                            className="field"
+                            placeholder="Product name"
+                            value={editForm.name}
+                            onChange={(event) =>
+                              setEditForm((current) => ({ ...current, name: event.target.value }))
+                            }
+                          />
+                          <div className="grid gap-3 md:grid-cols-2">
+                            <input
+                              className="field"
+                              type="number"
+                              placeholder="Price"
+                              value={editForm.price}
+                              onChange={(event) =>
+                                setEditForm((current) => ({ ...current, price: event.target.value }))
+                              }
+                            />
+                            <select
+                              className="field"
+                              value={editForm.category}
+                              onChange={(event) =>
+                                setEditForm((current) => ({ ...current, category: event.target.value }))
+                              }
+                            >
+                              {productCategories.map((category) => (
+                                <option key={category} value={category}>
+                                  {category}
+                                </option>
+                              ))}
+                            </select>
+                          </div>
+                          <textarea
+                            className="field min-h-24"
+                            placeholder="Description"
+                            value={editForm.description}
+                            onChange={(event) =>
+                              setEditForm((current) => ({
+                                ...current,
+                                description: event.target.value,
+                              }))
+                            }
+                          />
+                          <label className="flex items-center gap-3 rounded-2xl bg-staps-mist px-4 py-3">
+                            <input
+                              type="checkbox"
+                              checked={editForm.isFlashSale}
+                              onChange={(event) =>
+                                setEditForm((current) => ({
+                                  ...current,
+                                  isFlashSale: event.target.checked,
+                                }))
+                              }
+                            />
+                            <span className="font-semibold">Enable flash sale</span>
+                          </label>
+                          <div className="grid gap-3 md:grid-cols-2">
+                            <input
+                              className="field"
+                              type="number"
+                              placeholder="Discount price"
+                              value={editForm.discountPrice}
+                              onChange={(event) =>
+                                setEditForm((current) => ({
+                                  ...current,
+                                  discountPrice: event.target.value,
+                                }))
+                              }
+                            />
+                            <input
+                              className="field"
+                              type="datetime-local"
+                              value={editForm.flashSaleEndTime}
+                              onChange={(event) =>
+                                setEditForm((current) => ({
+                                  ...current,
+                                  flashSaleEndTime: event.target.value,
+                                }))
+                              }
+                            />
+                          </div>
+                          <div className="space-y-3">
+                            <p className="text-xs font-semibold uppercase tracking-[0.14em] text-staps-ink/45">
+                              Current images
+                            </p>
+                            <div className="grid grid-cols-2 gap-2">
+                              {editCurrentImages.length ? (
+                                editCurrentImages.map((image, index) => (
+                                  <div key={`${image}-${index}`} className="overflow-hidden rounded-2xl bg-[#f6f8fc]">
+                                    <div className="h-24">
+                                      <img
+                                        src={resolveAssetUrl(image)}
+                                        alt={`${product.name} ${index + 1}`}
+                                        className="h-full w-full object-cover"
+                                      />
+                                    </div>
+                                  </div>
+                                ))
+                              ) : (
+                                <div className="rounded-2xl bg-[#f6f8fc] px-3 py-4 text-xs text-staps-ink/55">
+                                  No current images
+                                </div>
+                              )}
+                            </div>
+                            <label className="secondary-button w-full cursor-pointer">
+                              Replace images
+                              <input
+                                className="hidden"
+                                type="file"
+                                accept="image/*"
+                                multiple
+                                onChange={(event) =>
+                                  setEditForm((current) => ({
+                                    ...current,
+                                    images: Array.from(event.target.files || []).slice(0, 6),
+                                  }))
+                                }
+                              />
+                            </label>
+                            {editImagePreviews.length ? (
+                              <div className="grid grid-cols-2 gap-2">
+                                {editImagePreviews.map((preview, index) => (
+                                  <div key={`${preview.name}-${index}`} className="overflow-hidden rounded-2xl bg-[#f6f8fc]">
+                                    <div className="h-24">
+                                      <img
+                                        src={preview.url}
+                                        alt={preview.name}
+                                        className="h-full w-full object-cover"
+                                      />
+                                    </div>
+                                    <div className="px-2 py-2 text-[0.68rem] text-staps-ink/60">
+                                      {index === 0 ? "New primary image" : `Replacement ${index + 1}`}
+                                    </div>
+                                  </div>
+                                ))}
+                              </div>
+                            ) : null}
+                          </div>
+                          <div className="flex flex-col gap-2 sm:flex-row">
+                            <button
+                              type="button"
+                              onClick={() => saveProductChanges(product._id)}
+                              className="primary-button w-full"
+                            >
+                              Save changes
+                            </button>
+                            <button
+                              type="button"
+                              onClick={cancelEditingProduct}
+                              className="secondary-button w-full"
+                            >
+                              Cancel
+                            </button>
+                          </div>
+                        </div>
+                      )}
                     </div>
                   </div>
                 ))

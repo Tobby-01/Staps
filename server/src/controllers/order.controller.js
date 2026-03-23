@@ -11,6 +11,7 @@ import { createNotification } from "../services/notification.service.js";
 import {
   assertCancelable,
   computeCancelableUntil,
+  releaseVendorPayoutForOrder,
   runAutoConfirmSweep,
   transitionOrderToCompleted,
 } from "../services/order.service.js";
@@ -128,6 +129,21 @@ export const listMyOrders = asyncHandler(async (req, res) => {
   const filter =
     req.user.role === ROLES.VENDOR ? { vendor: req.user.id } : { user: req.user.id };
 
+  const pendingOrders = await Order.find({
+    ...filter,
+    status: ORDER_STATUS.PENDING,
+    isPaid: false,
+    paystackReference: { $exists: true, $ne: null },
+  }).select("paystackReference");
+
+  for (const pendingOrder of pendingOrders) {
+    try {
+      await finalizePaystackPayment(pendingOrder.paystackReference);
+    } catch (_error) {
+      // Keep the order pending if payment is not yet successful or verification fails.
+    }
+  }
+
   const orders = await Order.find(filter)
     .sort({ createdAt: -1 })
     .populate("product", "name image images price")
@@ -155,6 +171,7 @@ export const vendorAcceptOrder = asyncHandler(async (req, res) => {
   }
 
   order.status = ORDER_STATUS.PROCESSING;
+  order.vendorTransferStatus = "payment_secured";
   await order.save();
 
   await createNotification({
@@ -204,6 +221,9 @@ export const vendorShipOrder = asyncHandler(async (req, res) => {
 
   order.status = ORDER_STATUS.SHIPPED;
   order.shippedAt = new Date();
+  if (!order.paymentReleased) {
+    order.vendorTransferStatus = "awaiting_payout_request";
+  }
   await order.save();
 
   await createNotification({
@@ -311,6 +331,46 @@ export const confirmDelivery = asyncHandler(async (req, res) => {
   const message = updatedOrder.paymentReleased
     ? "Delivery confirmed and vendor payout released."
     : "Delivery confirmed successfully.";
+
+  res.json({
+    success: true,
+    message,
+    order: updatedOrder,
+  });
+});
+
+export const vendorRequestPayout = asyncHandler(async (req, res) => {
+  const order = await Order.findOne({ _id: req.params.id, vendor: req.user.id });
+  if (!order) {
+    throw new ApiError(404, "Order not found.");
+  }
+
+  if (!order.isPaid) {
+    throw new ApiError(400, "This order has not been paid yet.");
+  }
+
+  if (order.status !== ORDER_STATUS.SHIPPED) {
+    throw new ApiError(400, "You can only request payout after the order has been marked as shipped.");
+  }
+
+  if (order.paymentReleased) {
+    return res.json({
+      success: true,
+      message: "Payout has already been released for this order.",
+      order,
+    });
+  }
+
+  order.payoutRequestedAt = new Date();
+  order.vendorTransferStatus = "payout_requested";
+  await order.save();
+
+  const updatedOrder = await releaseVendorPayoutForOrder(order, { trigger: "vendor_request" });
+  const message = updatedOrder.paymentReleased
+    ? "Payout requested successfully and funds have been released."
+    : updatedOrder.vendorTransferStatus === "awaiting_payout_setup"
+      ? "Payout request saved. Add your payout details to receive funds."
+      : "Payout request saved and is pending processing.";
 
   res.json({
     success: true,

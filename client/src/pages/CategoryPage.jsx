@@ -107,15 +107,15 @@ export const CategoryPage = () => {
   }
 
   return (
-    <div className="space-y-6 pb-10">
-      <section className="surface-card overflow-hidden p-5 md:p-6">
-        <div className="flex flex-wrap gap-2.5">
+    <div className="space-y-4 pb-6 md:space-y-6 md:pb-10">
+      <section className="surface-card overflow-hidden p-3.5 sm:p-4 md:p-6">
+        <div className="-mx-1 flex gap-2 overflow-x-auto px-1 pb-1 md:mx-0 md:flex-wrap md:overflow-visible md:px-0 md:pb-0 md:gap-2.5">
           {marketplaceCategories.map((category) => (
             <NavLink
               key={category}
               to={`/categories/${categoryToSlug(category)}`}
               className={({ isActive }) =>
-                `filter-pill ${isActive ? "filter-pill-active" : ""}`
+                `filter-pill shrink-0 ${isActive ? "filter-pill-active" : ""}`
               }
             >
               {category}
@@ -123,7 +123,7 @@ export const CategoryPage = () => {
           ))}
         </div>
 
-        <div className="mt-5 grid gap-5 xl:grid-cols-[260px_minmax(0,1fr)]">
+        <div className="mt-3 grid gap-4 md:mt-5 md:gap-5 xl:grid-cols-[260px_minmax(0,1fr)]">
           <aside className="space-y-4">
             <div className="rounded-[1.75rem] bg-[#f8f9fd] p-5">
               <div className="flex items-center justify-between">
@@ -195,15 +195,15 @@ export const CategoryPage = () => {
           </aside>
 
           <div className="min-w-0 space-y-4">
-            <div className="flex flex-col gap-2 rounded-[2rem] bg-gradient-to-r from-[#f7f9ff] via-white to-[#eef4fb] p-5 md:flex-row md:items-end md:justify-between">
+            <div className="flex flex-col gap-2 rounded-[1.55rem] bg-gradient-to-r from-[#f7f9ff] via-white to-[#eef4fb] p-4 md:rounded-[2rem] md:p-5 md:flex-row md:items-end md:justify-between">
               <div>
                 <p className="text-sm font-bold uppercase tracking-[0.24em] text-[#644df0]">
                   Category page
                 </p>
-                <h1 className="mt-2 font-display text-3xl font-extrabold md:text-4xl">
+                <h1 className="mt-2 font-display text-[1.92rem] font-extrabold leading-[0.98] md:text-4xl">
                   {categoryName}
                 </h1>
-                <p className="mt-2 text-sm text-staps-ink/60">
+                <p className="mt-2 text-[0.95rem] text-staps-ink/60 md:text-sm">
                   Browse products in this category with the same marketplace styling as the home page.
                 </p>
               </div>
