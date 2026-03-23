@@ -98,6 +98,7 @@ Important production values:
 - `CLIENT_URL=https://your-frontend.vercel.app`
   You can also include multiple origins separated by commas, for example:
   `CLIENT_URL=https://your-frontend.vercel.app,https://your-preview.vercel.app`
+  STAPS uses the first non-localhost value in this list for email links and Paystack redirects.
 - `SERVER_URL=https://your-api.onrender.com`
 - `MONGODB_URI=<your-mongodb-atlas-uri>`
 - `JWT_SECRET=<strong-random-secret>`
