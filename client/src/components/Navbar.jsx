@@ -1,4 +1,4 @@
-import { Bars3Icon, XMarkIcon } from "@heroicons/react/24/outline";
+import { Bars3Icon, MagnifyingGlassIcon, XMarkIcon } from "@heroicons/react/24/outline";
 import { useState } from "react";
 import { Link, NavLink, useLocation, useNavigate } from "react-router-dom";
 
@@ -46,12 +46,12 @@ export const Navbar = ({ search, setSearch }) => {
   };
 
   return (
-    <header className="sticky top-0 z-40 px-3 pt-3 sm:px-4 sm:pt-4">
-      <div className="mx-auto max-w-7xl overflow-hidden rounded-[1.6rem] border border-white/50 bg-white/88 px-4 py-3 shadow-soft backdrop-blur md:grid md:grid-cols-[auto_minmax(0,1fr)_auto] md:items-center md:gap-5 md:rounded-[2rem] md:px-5 md:py-4">
+    <header className="sticky top-0 z-40 px-2.5 pt-2.5 sm:px-4 sm:pt-4">
+      <div className="mx-auto max-w-7xl overflow-hidden rounded-[1.7rem] border border-white/55 bg-white/90 px-4 py-3 shadow-soft backdrop-blur md:grid md:grid-cols-[auto_minmax(0,1fr)_auto] md:items-center md:gap-5 md:rounded-[2rem] md:px-5 md:py-4">
         <div className="flex items-center justify-between gap-3 md:justify-start md:gap-4">
           <Link
             to="/"
-            className="font-display text-xl font-extrabold tracking-tight text-staps-ink sm:text-2xl"
+            className="font-display text-[1.95rem] font-extrabold tracking-tight text-staps-ink sm:text-2xl"
             onClick={closeMobileMenu}
           >
             STAPS
@@ -62,7 +62,7 @@ export const Navbar = ({ search, setSearch }) => {
           <button
             type="button"
             onClick={() => setMobileMenuOpen((current) => !current)}
-            className="inline-flex h-11 w-11 items-center justify-center rounded-full border border-staps-ink/10 bg-[#f5f7fb] text-staps-ink md:hidden"
+            className="inline-flex h-11 w-11 items-center justify-center rounded-full border border-staps-ink/10 bg-[#f5f7fb] text-staps-ink shadow-sm md:hidden"
             aria-label={mobileMenuOpen ? "Close menu" : "Open menu"}
             aria-expanded={mobileMenuOpen}
           >
@@ -72,15 +72,15 @@ export const Navbar = ({ search, setSearch }) => {
 
         <form
           onSubmit={handleSearchSubmit}
-          className="mt-3 flex min-w-0 items-center gap-2 md:mt-0 md:gap-3"
+          className="mt-3 grid min-w-0 grid-cols-[minmax(0,1fr)_auto] items-center gap-2.5 md:mt-0 md:flex md:gap-3"
         >
-          <div className="flex min-w-0 w-full items-center gap-2 rounded-full bg-[#f5f7fb] px-4 py-3 md:gap-3 md:px-5">
-            <span className="text-sm text-staps-ink/40">Search</span>
+          <div className="flex min-w-0 w-full items-center gap-2.5 rounded-full bg-[#f5f7fb] px-3.5 py-2.5 md:gap-3 md:px-5 md:py-3">
+            <MagnifyingGlassIcon className="h-[1.05rem] w-[1.05rem] shrink-0 text-staps-ink/35" />
             <input
               value={search}
               onChange={(event) => setSearch(event.target.value)}
-              placeholder="Sneakers, gadgets, food, textbooks..."
-              className="min-w-0 w-full bg-transparent text-sm outline-none placeholder:text-staps-ink/35"
+              placeholder="Search products, food, books..."
+              className="min-w-0 w-full bg-transparent text-[0.95rem] outline-none placeholder:text-staps-ink/35 md:text-sm"
             />
             {search ? (
               <button
@@ -94,9 +94,10 @@ export const Navbar = ({ search, setSearch }) => {
           </div>
           <button
             type="submit"
-            className="inline-flex h-11 shrink-0 items-center justify-center rounded-full bg-[#6e54ef] px-4 text-sm font-semibold text-white transition hover:bg-[#5a49d6]"
+            className="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-[#6e54ef] text-sm font-semibold text-white transition hover:bg-[#5a49d6] md:w-auto md:px-4"
           >
-            Search
+            <MagnifyingGlassIcon className="h-5 w-5 md:hidden" />
+            <span className="hidden md:inline">Search</span>
           </button>
           <Link
             to="/"

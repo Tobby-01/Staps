@@ -46,7 +46,7 @@ export const FeatureCard = ({
   return (
     <article
       className={[
-        "group relative w-full max-w-none overflow-hidden rounded-[1.7rem] border p-4 text-left shadow-md transition-all duration-300 hover:scale-[1.02] hover:shadow-lg sm:aspect-square md:rounded-[2.2rem] md:hover:scale-105",
+        "group relative w-full max-w-none overflow-hidden rounded-[1.45rem] border p-3.5 text-left shadow-md transition-all duration-300 hover:scale-[1.02] hover:shadow-lg sm:aspect-square md:rounded-[2.2rem] md:p-4 md:hover:scale-105",
         styles.card,
         className,
       ].join(" ")}
@@ -59,27 +59,27 @@ export const FeatureCard = ({
       <div className="relative flex h-full flex-col">
         <div
           className={[
-            "inline-flex h-10 w-10 items-center justify-center rounded-[1.1rem] border transition-transform duration-300 group-hover:-translate-y-0.5",
+            "inline-flex h-9 w-9 items-center justify-center rounded-[1rem] border transition-transform duration-300 group-hover:-translate-y-0.5 md:h-10 md:w-10 md:rounded-[1.1rem]",
             styles.icon,
           ].join(" ")}
         >
-          <Icon className="h-5 w-5" />
+          <Icon className="h-[1.05rem] w-[1.05rem] md:h-5 md:w-5" />
         </div>
 
-        <div className="mt-3 space-y-1.5">
-          <p className={`text-[0.62rem] font-bold uppercase tracking-[0.24em] ${styles.eyebrow}`}>
+        <div className="mt-2.5 space-y-1.5 md:mt-3">
+          <p className={`text-[0.58rem] font-bold uppercase tracking-[0.22em] md:text-[0.62rem] md:tracking-[0.24em] ${styles.eyebrow}`}>
             {highlight ? "Escrow protection" : "Marketplace benefit"}
           </p>
           <h3
             className={`font-display font-bold leading-tight text-staps-ink ${
-              highlight ? "text-[1rem] md:text-[1.16rem]" : "text-[0.92rem] md:text-[1.02rem]"
+              highlight ? "text-[0.96rem] md:text-[1.16rem]" : "text-[0.88rem] md:text-[1.02rem]"
             }`}
           >
             {title}
           </h3>
           <p
             className={`max-w-[30ch] text-staps-ink/68 ${
-              highlight ? "text-[0.72rem] leading-5" : "text-[0.7rem] leading-5"
+              highlight ? "text-[0.7rem] leading-5 md:text-[0.72rem]" : "text-[0.68rem] leading-5 md:text-[0.7rem]"
             }`}
           >
             {description}

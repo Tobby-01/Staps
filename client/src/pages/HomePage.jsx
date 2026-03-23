@@ -119,34 +119,34 @@ export const HomePage = () => {
   };
 
   return (
-    <div className="space-y-4 pb-8 md:space-y-6 md:pb-10">
-      <section className="surface-card overflow-hidden p-4 md:p-6">
-        <div className="flex flex-wrap gap-2 md:gap-2.5">
+    <div className="space-y-4 pb-6 md:space-y-6 md:pb-10">
+      <section className="surface-card overflow-hidden p-3.5 sm:p-4 md:p-6">
+        <div className="-mx-1 flex gap-2 overflow-x-auto px-1 pb-1 md:mx-0 md:flex-wrap md:overflow-visible md:px-0 md:pb-0 md:gap-2.5">
           {marketplaceCategories.map((category) => (
             <NavLink
               key={category}
               to={`/categories/${categoryToSlug(category)}`}
-              className="filter-pill"
+              className="filter-pill shrink-0"
             >
               {category}
             </NavLink>
           ))}
         </div>
 
-        <div className="mt-4 grid gap-4 xl:grid-cols-[250px_minmax(0,1fr)] xl:items-start xl:gap-6">
+        <div className="mt-3 grid gap-4 md:mt-4 xl:grid-cols-[250px_minmax(0,1fr)] xl:items-start xl:gap-6">
           <div className="order-1 min-w-0 space-y-4 xl:order-2">
-            <section className="relative overflow-hidden rounded-[1.7rem] bg-gradient-to-r from-[#f7f9ff] via-white to-[#eef4fb] p-4 sm:p-5 md:rounded-[2rem] md:p-7">
+            <section className="relative overflow-hidden rounded-[1.55rem] bg-gradient-to-r from-[#f7f9ff] via-white to-[#eef4fb] p-4 sm:p-5 md:rounded-[2rem] md:p-7">
               <div className="absolute inset-y-0 right-0 hidden w-1/3 bg-[radial-gradient(circle_at_top,rgba(82,196,168,0.14),transparent_58%),radial-gradient(circle_at_bottom,rgba(109,84,239,0.1),transparent_54%)] xl:block" />
-              <div className="relative min-w-0 space-y-4 md:space-y-5">
-                <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_300px] xl:items-center xl:gap-5">
-                  <div className="max-w-full space-y-4 xl:max-w-[36rem] xl:space-y-5">
+              <div className="relative min-w-0 space-y-3.5 md:space-y-5">
+                <div className="grid gap-3 md:gap-4 xl:grid-cols-[minmax(0,1fr)_300px] xl:items-center xl:gap-5">
+                  <div className="max-w-full space-y-3.5 xl:max-w-[36rem] xl:space-y-5">
                     <span className="inline-flex rounded-full bg-[#efeafe] px-3 py-2 text-[0.64rem] font-bold uppercase tracking-[0.24em] text-[#644df0] md:px-4 md:text-xs md:tracking-[0.28em]">
                       Campus marketplace
                     </span>
-                    <h1 className="max-w-full font-display text-[2.15rem] font-extrabold leading-[0.98] sm:text-[2.55rem] md:max-w-lg md:text-[3.6rem] xl:text-[4.15rem]">
+                    <h1 className="max-w-full font-display text-[1.92rem] font-extrabold leading-[0.98] sm:text-[2.45rem] md:max-w-lg md:text-[3.6rem] xl:text-[4.15rem]">
                       Shop campus favorites in one trusted marketplace.
                     </h1>
-                    <p className="max-w-full text-sm leading-6 text-staps-ink/65 md:max-w-lg md:text-[1rem]">
+                    <p className="max-w-full text-[0.95rem] leading-6 text-staps-ink/65 md:max-w-lg md:text-[1rem]">
                       STAPS gives shoppers secure escrow checkout, cleaner discovery, and trusted
                       campus sellers in one polished flow.
                     </p>
@@ -166,7 +166,7 @@ export const HomePage = () => {
                     </div>
                   </div>
 
-                  <div className="relative h-[210px] overflow-hidden rounded-[1.7rem] border border-white/70 bg-[linear-gradient(180deg,rgba(239,248,255,0.92),rgba(255,255,255,0.56))] shadow-[0_16px_40px_rgba(18,38,32,0.08)] sm:h-[240px] xl:h-[280px] xl:rounded-[2rem] xl:shadow-[0_24px_60px_rgba(18,38,32,0.08)]">
+                  <div className="relative hidden overflow-hidden rounded-[1.7rem] border border-white/70 bg-[linear-gradient(180deg,rgba(239,248,255,0.92),rgba(255,255,255,0.56))] shadow-[0_16px_40px_rgba(18,38,32,0.08)] md:block md:h-[220px] xl:h-[280px] xl:rounded-[2rem] xl:shadow-[0_24px_60px_rgba(18,38,32,0.08)]">
                     <div className="absolute inset-x-4 top-4 rounded-full bg-white/75 px-4 py-2 text-center text-[0.64rem] font-semibold uppercase tracking-[0.18em] text-staps-ink/45 backdrop-blur md:inset-x-6 md:top-6 md:text-[0.68rem] md:tracking-[0.22em]">
                       Transparent shopper vector space
                     </div>
@@ -183,7 +183,7 @@ export const HomePage = () => {
                   </div>
                 </div>
 
-                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 2xl:grid-cols-4">
+                <div className="grid grid-cols-1 gap-2.5 sm:grid-cols-2 2xl:grid-cols-4">
                   {marketplaceFeatures.map((feature) => (
                     <FeatureCard
                       key={feature.title}
@@ -225,7 +225,7 @@ export const HomePage = () => {
             )}
           </div>
 
-          <aside className="order-2 space-y-4 xl:order-1">
+          <aside className="order-2 space-y-3.5 xl:order-1 xl:space-y-4">
             <div className="rounded-[1.5rem] bg-[#f8f9fd] p-4 md:rounded-[1.75rem] md:p-5">
               <div className="flex items-center justify-between">
                 <div>

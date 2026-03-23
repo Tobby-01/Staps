@@ -136,6 +136,25 @@ export const VendorDashboard = () => {
     await loadDashboard();
   };
 
+  const delistProduct = async (productId, productName) => {
+    const shouldContinue = window.confirm(
+      `Delist "${productName}"? It will be removed from the storefront for shoppers.`,
+    );
+
+    if (!shouldContinue) {
+      return;
+    }
+
+    try {
+      setError("");
+      await apiRequest(`/api/products/${productId}`, { method: "DELETE" });
+      setMessage("Product delisted successfully.");
+      await loadDashboard();
+    } catch (requestError) {
+      setError(requestError.message);
+    }
+  };
+
   const earnings = orders
     .filter((order) => order.paymentReleased)
     .reduce((sum, order) => sum + order.totalAmount, 0);
@@ -478,14 +497,28 @@ export const VendorDashboard = () => {
                       )}
                     </div>
                     <div className="p-4">
-                      <p className="font-semibold">{product.name}</p>
-                      <p className="mt-1 text-sm text-staps-ink/60">{product.category}</p>
+                      <div className="flex items-start justify-between gap-3">
+                        <div>
+                          <p className="font-semibold">{product.name}</p>
+                          <p className="mt-1 text-sm text-staps-ink/60">{product.category}</p>
+                        </div>
+                        <span className="rounded-full bg-white px-3 py-1 text-xs font-semibold text-emerald-700">
+                          Listed
+                        </span>
+                      </div>
                       <p className="mt-2 text-sm font-semibold text-staps-ink">
                         NGN {Number(product.price).toLocaleString()}
                       </p>
                       <p className="mt-2 text-xs text-staps-ink/55">
                         {product.images?.length || (product.image ? 1 : 0)} image(s) uploaded
                       </p>
+                      <button
+                        type="button"
+                        onClick={() => delistProduct(product._id, product.name)}
+                        className="secondary-button mt-4 w-full border-red-200 bg-white text-red-600 hover:bg-red-50"
+                      >
+                        Delist product
+                      </button>
                     </div>
                   </div>
                 ))
