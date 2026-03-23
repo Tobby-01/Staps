@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 
-import { apiRequest } from "../lib/api.js";
+import { apiRequest, resolveAssetUrl } from "../lib/api.js";
 import { useAuth } from "../state/AuthContext.jsx";
 import { useCart } from "../state/CartContext.jsx";
 
@@ -119,7 +119,7 @@ export const CartPage = () => {
                     <div className="h-16 w-16 shrink-0 overflow-hidden rounded-2xl bg-[#f6f8fc]">
                       {item.image || item.images?.[0] ? (
                         <img
-                          src={item.image || item.images?.[0]}
+                          src={resolveAssetUrl(item.image || item.images?.[0])}
                           alt={item.name}
                           className="h-full w-full object-cover"
                         />

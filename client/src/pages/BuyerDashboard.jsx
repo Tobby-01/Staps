@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 
-import { apiRequest } from "../lib/api.js";
+import { apiRequest, resolveAssetUrl } from "../lib/api.js";
 import { useAuth } from "../state/AuthContext.jsx";
 
 const supportEmail = "support@staps.app";
@@ -210,7 +210,7 @@ export const ShopperDashboard = () => {
               <div className="flex items-center gap-4 rounded-[1.6rem] bg-[#f8f9fd] p-4">
                 {user?.avatarUrl ? (
                   <img
-                    src={user.avatarUrl}
+                    src={resolveAssetUrl(user.avatarUrl)}
                     alt={user.name}
                     className="h-20 w-20 rounded-[1.4rem] object-cover"
                   />
@@ -372,7 +372,7 @@ export const ShopperDashboard = () => {
                         <div className="h-20 w-20 shrink-0 overflow-hidden rounded-[1.35rem] bg-[#f6f8fc]">
                           {order.product?.image || order.product?.images?.[0] ? (
                             <img
-                              src={order.product?.image || order.product?.images?.[0]}
+                              src={resolveAssetUrl(order.product?.image || order.product?.images?.[0])}
                               alt={order.product?.name}
                               className="h-full w-full object-cover"
                             />
@@ -457,7 +457,7 @@ export const ShopperDashboard = () => {
                         <div className="h-20 w-20 shrink-0 overflow-hidden rounded-[1.35rem] bg-white">
                           {order.product?.image || order.product?.images?.[0] ? (
                             <img
-                              src={order.product?.image || order.product?.images?.[0]}
+                              src={resolveAssetUrl(order.product?.image || order.product?.images?.[0])}
                               alt={order.product?.name}
                               className="h-full w-full object-cover"
                             />

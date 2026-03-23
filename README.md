@@ -69,6 +69,7 @@ npm install
 
 ```bash
 npm run dev
+```
 
 ## Paystack Notes
 
@@ -76,4 +77,45 @@ npm run dev
 - `server/.env` must contain a valid `PAYSTACK_SECRET_KEY=sk_test_...` or `sk_live_...` for payments to work.
 - A `pk_test_...` public key is optional for future inline popup checkout, but it does not replace the secret key used by the backend.
 - The vendor registration fee is set to `NGN 1,000` in the current test configuration and can be changed later through `VENDOR_REGISTRATION_FEE`.
+
+## Deployment
+
+Recommended setup:
+
+- Frontend: Vercel
+- Backend API: Render
+- Database: MongoDB Atlas
+
+### Backend on Render
+
+1. Push this repo to GitHub.
+2. In Render, create a new Web Service from this repo or use the included `render.yaml`.
+3. Set the service root directory to `server` if Render does not detect it automatically.
+4. Add production environment variables based on `server/.env.example`.
+
+Important production values:
+
+- `CLIENT_URL=https://your-frontend.vercel.app`
+  You can also include multiple origins separated by commas, for example:
+  `CLIENT_URL=https://your-frontend.vercel.app,https://your-preview.vercel.app`
+- `SERVER_URL=https://your-api.onrender.com`
+- `MONGODB_URI=<your-mongodb-atlas-uri>`
+- `JWT_SECRET=<strong-random-secret>`
+- `PAYSTACK_CALLBACK_URL=https://your-frontend.vercel.app/payment/callback`
+
+### Frontend on Vercel
+
+1. Create a new Vercel project from the same GitHub repo.
+2. Set the project root directory to `client`.
+3. Add:
+
+```bash
+VITE_API_BASE_URL=https://your-api.onrender.com
 ```
+
+4. Deploy the frontend.
+
+### Notes
+
+- Uploaded product images, avatars, and vendor documents are currently stored on the backend filesystem. For long-term production reliability, move uploads to persistent object storage such as Cloudinary, S3, or Supabase Storage.
+- Authentication cookies use secure cross-site settings in production, so both frontend and backend must be served over HTTPS.

@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 
-import { apiRequest } from "../lib/api.js";
+import { apiRequest, resolveAssetUrl } from "../lib/api.js";
 
 const productCategories = [
   "Fashion",
@@ -368,7 +368,7 @@ export const VendorDashboard = () => {
                           <div className="h-16 w-16 shrink-0 overflow-hidden rounded-[1.2rem] bg-[#eef2f8]">
                             {order.product?.image || order.product?.images?.[0] ? (
                               <img
-                                src={order.product?.image || order.product?.images?.[0]}
+                                src={resolveAssetUrl(order.product?.image || order.product?.images?.[0])}
                                 alt={order.product?.name}
                                 className="h-full w-full object-cover"
                               />
@@ -467,7 +467,7 @@ export const VendorDashboard = () => {
                     <div className="h-36 bg-white/70">
                       {product.image || product.images?.[0] ? (
                         <img
-                          src={product.image || product.images?.[0]}
+                          src={resolveAssetUrl(product.image || product.images?.[0])}
                           alt={product.name}
                           className="h-full w-full object-cover"
                         />

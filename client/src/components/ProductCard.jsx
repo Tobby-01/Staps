@@ -1,5 +1,6 @@
 import { Link } from "react-router-dom";
 
+import { resolveAssetUrl } from "../lib/api.js";
 import { useCart } from "../state/CartContext.jsx";
 import { useFavorites } from "../state/FavoritesContext.jsx";
 import { VerifiedVendorBadge } from "./VerifiedVendorBadge.jsx";
@@ -7,7 +8,7 @@ import { VerifiedVendorBadge } from "./VerifiedVendorBadge.jsx";
 export const ProductCard = ({ product, featured = false }) => {
   const { addToCart } = useCart();
   const { toggleFavorite, isFavorite } = useFavorites();
-  const previewImage = product.image || product.images?.[0];
+  const previewImage = resolveAssetUrl(product.image || product.images?.[0]);
   const favorite = isFavorite(product);
   const currentPrice =
     product.isFlashSale && product.discountPrice && new Date(product.flashSaleEndTime) > new Date()

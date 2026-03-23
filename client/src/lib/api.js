@@ -2,14 +2,40 @@ const defaultHeaders = {
   Accept: "application/json",
 };
 
+export const apiBaseUrl = (import.meta.env.VITE_API_BASE_URL || "").replace(/\/+$/, "");
+
 const apiUnavailableMessage =
   "Cannot reach the STAPS API. Start the backend on http://localhost:5000 and make sure MongoDB is running on 127.0.0.1:27017.";
+
+export const buildApiUrl = (path) => {
+  if (!path) {
+    return path;
+  }
+
+  if (/^https?:\/\//i.test(path)) {
+    return path;
+  }
+
+  return apiBaseUrl ? `${apiBaseUrl}${path}` : path;
+};
+
+export const resolveAssetUrl = (path) => {
+  if (!path) {
+    return "";
+  }
+
+  if (/^https?:\/\//i.test(path)) {
+    return path;
+  }
+
+  return apiBaseUrl ? `${apiBaseUrl}${path}` : path;
+};
 
 export const apiRequest = async (path, options = {}) => {
   let response;
 
   try {
-    response = await fetch(path, {
+    response = await fetch(buildApiUrl(path), {
       credentials: "include",
       headers: {
         ...defaultHeaders,

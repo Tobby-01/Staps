@@ -1,5 +1,6 @@
 import { Link } from "react-router-dom";
 
+import { resolveAssetUrl } from "../lib/api.js";
 import { VerifiedVendorBadge } from "../components/VerifiedVendorBadge.jsx";
 import { useFavorites } from "../state/FavoritesContext.jsx";
 
@@ -24,7 +25,7 @@ export const FavoritesPage = () => {
                 <div className="h-52 bg-[#f6f8fc]">
                   {product.image || product.images?.[0] ? (
                     <img
-                      src={product.image || product.images?.[0]}
+                      src={resolveAssetUrl(product.image || product.images?.[0])}
                       alt={product.name}
                       className="h-full w-full object-cover"
                     />

@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 
-import { apiRequest } from "../lib/api.js";
+import { apiRequest, resolveAssetUrl } from "../lib/api.js";
 import { useAuth } from "../state/AuthContext.jsx";
 
 const formatTime = (value) =>
@@ -107,7 +107,7 @@ export const ProfileChatPage = () => {
             <div className="mt-5 flex items-center gap-4">
               {profile?.avatarUrl ? (
                 <img
-                  src={profile.avatarUrl}
+                  src={resolveAssetUrl(profile.avatarUrl)}
                   alt={profile.name}
                   className="h-20 w-20 rounded-[1.6rem] object-cover"
                 />

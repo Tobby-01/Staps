@@ -10,7 +10,7 @@ export const verifyToken = (token) => jwt.verify(token, env.jwtSecret);
 export const setAuthCookie = (res, token) => {
   res.cookie(env.cookieName, token, {
     httpOnly: true,
-    sameSite: "lax",
+    sameSite: env.isProduction ? "none" : "lax",
     secure: env.isProduction,
     maxAge: 7 * 24 * 60 * 60 * 1000,
   });
@@ -19,8 +19,7 @@ export const setAuthCookie = (res, token) => {
 export const clearAuthCookie = (res) => {
   res.clearCookie(env.cookieName, {
     httpOnly: true,
-    sameSite: "lax",
+    sameSite: env.isProduction ? "none" : "lax",
     secure: env.isProduction,
   });
 };
-
