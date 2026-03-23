@@ -122,3 +122,4 @@ VITE_API_BASE_URL=https://your-api.onrender.com
 
 - Uploaded product images, avatars, and vendor documents are currently stored on the backend filesystem. For long-term production reliability, move uploads to persistent object storage such as Cloudinary, S3, or Supabase Storage.
 - Authentication cookies use secure cross-site settings in production, so both frontend and backend must be served over HTTPS.
+- To send the one-time “email delivery is back online” broadcast to all users, run `npm run notify:mailing-restored --workspace server` after confirming SMTP is working.

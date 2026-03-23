@@ -453,3 +453,34 @@ export const sendChatMessageEmail = async ({
     `,
   });
 };
+
+export const sendMailingRestoredEmail = async ({ to, name }) => {
+  const greeting = name?.trim() || "there";
+  const homeUrl = env.clientUrl;
+
+  await sendMail({
+    from: env.mailFrom,
+    to,
+    subject: "STAPS email updates are back online",
+    text: [
+      `Hello ${greeting},`,
+      "",
+      "STAPS email notifications are back online.",
+      "You can now receive signup pins, password reset codes, order updates, and chat alerts again.",
+      "",
+      `Visit STAPS: ${homeUrl}`,
+    ].join("\n"),
+    html: `
+      <div style="font-family: Arial, sans-serif; line-height: 1.6; color: #1f2937; max-width: 640px;">
+        <p>Hello ${greeting},</p>
+        <p><strong>STAPS</strong> email notifications are back online.</p>
+        <p>You can now receive signup pins, password reset codes, order updates, and chat alerts again.</p>
+        <p>
+          <a href="${homeUrl}" style="display: inline-block; background: #6e54ef; color: #ffffff; text-decoration: none; padding: 12px 18px; border-radius: 999px; font-weight: 700;">
+            Open STAPS
+          </a>
+        </p>
+      </div>
+    `,
+  });
+};

@@ -5,7 +5,8 @@
   "type": "module",
   "scripts": {
     "dev": "nodemon src/server.js",
-    "start": "node src/server.js"
+    "start": "node src/server.js",
+    "notify:mailing-restored": "node src/scripts/notify-mailing-restored.js"
   },
   "dependencies": {
     "bcryptjs": "^2.4.3",
