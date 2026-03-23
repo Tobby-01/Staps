@@ -1,0 +1,92 @@
+@import url("https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=Poppins:wght@600;700;800&display=swap");
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  body {
+    @apply bg-staps-cream font-body text-staps-ink antialiased;
+    background-image:
+      radial-gradient(circle at top left, rgba(112, 88, 247, 0.78), transparent 28%),
+      radial-gradient(circle at bottom right, rgba(109, 221, 194, 0.26), transparent 32%),
+      linear-gradient(135deg, #6d42e7 0%, #8ba7ff 34%, #fff6e6 70%, #f5f8ef 100%);
+    background-attachment: fixed;
+    overflow-x: hidden;
+  }
+
+  button,
+  input,
+  textarea,
+  select {
+    @apply font-body;
+  }
+}
+
+@keyframes staps-gradient-drift {
+  0% {
+    background-position: 0% 50%;
+  }
+  50% {
+    background-position: 100% 50%;
+  }
+  100% {
+    background-position: 0% 50%;
+  }
+}
+
+@keyframes staps-gradient-float {
+  0% {
+    background-position: 0% 50%;
+    transform: translateY(0);
+  }
+  50% {
+    background-position: 100% 50%;
+    transform: translateY(-1px);
+  }
+  100% {
+    background-position: 0% 50%;
+    transform: translateY(0);
+  }
+}
+
+@layer components {
+  .surface-card {
+    @apply rounded-[2rem] border border-white/70 bg-white/90 shadow-soft backdrop-blur;
+  }
+
+  .primary-button {
+    @apply inline-flex items-center justify-center rounded-2xl bg-[#6e54ef] px-4 py-3 font-semibold text-white transition hover:scale-[1.01] hover:bg-[#5a49d6];
+  }
+
+  .secondary-button {
+    @apply inline-flex items-center justify-center rounded-2xl border border-staps-ink/10 bg-staps-mist px-4 py-3 font-semibold text-staps-ink transition hover:bg-white;
+  }
+
+  .field {
+    @apply w-full rounded-2xl border border-staps-ink/10 bg-white px-4 py-3 outline-none ring-0 transition focus:border-staps-orange;
+  }
+
+  .filter-pill {
+    @apply inline-flex items-center justify-center rounded-full border border-staps-ink/10 bg-white px-4 py-2 text-sm font-semibold text-staps-ink transition hover:border-transparent hover:bg-[#6e54ef] hover:text-white;
+  }
+
+  .filter-pill-active {
+    @apply border-transparent bg-[#6e54ef] text-white shadow-lg shadow-[#6e54ef]/25;
+  }
+
+  .cta-gradient-button {
+    @apply inline-flex items-center justify-center rounded-full px-7 py-4 text-base font-semibold text-staps-ink shadow-lg shadow-[#6e54ef]/20 transition hover:scale-[1.01];
+    background: linear-gradient(120deg, #6f54ef 0%, #a99dfb 28%, #ffffff 50%, #b6adff 72%, #7158f1 100%);
+    background-size: 240% 240%;
+    animation: staps-gradient-drift 12s ease-in-out infinite;
+  }
+
+  .cta-gradient-button-soft {
+    @apply inline-flex items-center justify-center rounded-full px-6 py-3 font-semibold text-staps-ink shadow-lg transition hover:scale-[1.01];
+    background: linear-gradient(135deg, #775ef5 0%, #c0b8ff 35%, #ffffff 58%, #d8d2ff 78%, #7a63f6 100%);
+    background-size: 260% 260%;
+    box-shadow: 0 18px 36px rgba(110, 84, 239, 0.18);
+    animation: staps-gradient-float 16s ease-in-out infinite;
+  }
+}
