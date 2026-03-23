@@ -3,9 +3,32 @@ const defaultHeaders = {
 };
 
 export const apiBaseUrl = (import.meta.env.VITE_API_BASE_URL || "").replace(/\/+$/, "");
+const authTokenStorageKey = "staps_auth_token";
 
-const apiUnavailableMessage =
-  "Cannot reach the STAPS API. Start the backend on http://localhost:5000 and make sure MongoDB is running on 127.0.0.1:27017.";
+const apiUnavailableMessage = apiBaseUrl
+  ? "STAPS is temporarily unavailable right now. Please refresh and try again in a moment."
+  : "Cannot reach the STAPS API. Start the backend on http://localhost:5000 and make sure MongoDB is running on 127.0.0.1:27017.";
+
+export const getStoredAuthToken = () => {
+  if (typeof window === "undefined") {
+    return "";
+  }
+
+  return window.localStorage.getItem(authTokenStorageKey) || "";
+};
+
+export const setStoredAuthToken = (token) => {
+  if (typeof window === "undefined") {
+    return;
+  }
+
+  if (token) {
+    window.localStorage.setItem(authTokenStorageKey, token);
+    return;
+  }
+
+  window.localStorage.removeItem(authTokenStorageKey);
+};
 
 export const buildApiUrl = (path) => {
   if (!path) {
@@ -33,6 +56,7 @@ export const resolveAssetUrl = (path) => {
 
 export const apiRequest = async (path, options = {}) => {
   let response;
+  const storedToken = getStoredAuthToken();
 
   try {
     response = await fetch(buildApiUrl(path), {
@@ -40,6 +64,9 @@ export const apiRequest = async (path, options = {}) => {
       headers: {
         ...defaultHeaders,
         ...(options.body instanceof FormData ? {} : { "Content-Type": "application/json" }),
+        ...(storedToken && !options.headers?.Authorization
+          ? { Authorization: `Bearer ${storedToken}` }
+          : {}),
         ...(options.headers || {}),
       },
       ...options,

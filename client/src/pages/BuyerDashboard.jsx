@@ -39,6 +39,7 @@ export const ShopperDashboard = () => {
     setOrders(ordersResponse.orders || []);
     setNotifications(notificationsResponse.notifications || []);
     setReviews(reviewsResponse.reviews || []);
+    setError("");
   };
 
   useEffect(() => {

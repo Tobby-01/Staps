@@ -72,6 +72,7 @@ export const VendorDashboard = () => {
       bankCode: vendorResponse.vendor?.payoutAccount?.bankCode || "",
       accountNumber: vendorResponse.vendor?.payoutAccount?.accountNumber || "",
     });
+    setError("");
   };
 
   useEffect(() => {
