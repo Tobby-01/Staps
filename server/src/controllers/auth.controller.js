@@ -89,6 +89,7 @@ export const signup = asyncHandler(async (req, res) => {
   res.status(201).json({
     success: true,
     message: "Signup successful",
+    token,
     user: sanitizeUser(user),
   });
 });
@@ -119,6 +120,7 @@ export const login = asyncHandler(async (req, res) => {
   res.json({
     success: true,
     message: "Login successful",
+    token,
     user: sanitizeUser(user),
   });
 });

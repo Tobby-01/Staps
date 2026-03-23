@@ -1,6 +1,6 @@
 import { createContext, useContext, useEffect, useState } from "react";
 
-import { apiRequest } from "../lib/api.js";
+import { apiRequest, setStoredAuthToken } from "../lib/api.js";
 
 const AuthContext = createContext(null);
 
@@ -13,6 +13,7 @@ export const AuthProvider = ({ children }) => {
       const response = await apiRequest("/api/auth/me");
       setUser(response.user);
     } catch (_error) {
+      setStoredAuthToken("");
       setUser(null);
     } finally {
       setLoading(false);
@@ -28,6 +29,7 @@ export const AuthProvider = ({ children }) => {
       method: "POST",
       body: JSON.stringify(credentials),
     });
+    setStoredAuthToken(response.token || "");
     setUser(response.user);
     return response;
   };
@@ -37,12 +39,14 @@ export const AuthProvider = ({ children }) => {
       method: "POST",
       body: payload instanceof FormData ? payload : JSON.stringify(payload),
     });
+    setStoredAuthToken(response.token || "");
     setUser(response.user);
     return response;
   };
 
   const logout = async () => {
     await apiRequest("/api/auth/logout", { method: "POST" });
+    setStoredAuthToken("");
     setUser(null);
   };
 
