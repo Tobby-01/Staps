@@ -36,6 +36,7 @@ const userSchema = new mongoose.Schema(
       default: ROLES.USER,
     },
     avatarUrl: String,
+    avatarImageId: String,
     isEmailVerified: {
       type: Boolean,
       default: false,

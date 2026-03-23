@@ -49,6 +49,9 @@ export const env = {
   smtpConnectionTimeoutMs: Number(process.env.SMTP_CONNECTION_TIMEOUT_MS || 10000),
   smtpGreetingTimeoutMs: Number(process.env.SMTP_GREETING_TIMEOUT_MS || 10000),
   smtpSocketTimeoutMs: Number(process.env.SMTP_SOCKET_TIMEOUT_MS || 15000),
+  cloudflareImagesAccountId: process.env.CLOUDFLARE_IMAGES_ACCOUNT_ID || "",
+  cloudflareImagesApiToken: process.env.CLOUDFLARE_IMAGES_API_TOKEN || "",
+  cloudflareImagesVariant: process.env.CLOUDFLARE_IMAGES_VARIANT || "",
   paystackSecretKey: process.env.PAYSTACK_SECRET_KEY || "",
   paystackBaseUrl: process.env.PAYSTACK_BASE_URL || "https://api.paystack.co",
   paystackCallbackUrl:

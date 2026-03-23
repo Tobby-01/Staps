@@ -9,6 +9,11 @@ import {
   sendSignupVerificationEmail,
   sendWelcomeEmail,
 } from "../services/mail.service.js";
+import {
+  deleteImageFromCloudflare,
+  hasCloudflareImagesConfig,
+  uploadImageToCloudflare,
+} from "../services/cloudflare-images.service.js";
 import { ApiError } from "../utils/api-error.js";
 import { asyncHandler } from "../utils/async-handler.js";
 import { clearAuthCookie, setAuthCookie, signToken } from "../utils/jwt.js";
@@ -71,22 +76,41 @@ export const signup = asyncHandler(async (req, res) => {
 
   const verificationCode = createVerificationCode();
   const resolvedRole = resolveRoleForEmail(normalizedEmail, role);
-  const avatarUrl = req.file ? `/uploads/avatars/${req.file.filename}` : existingUser?.avatarUrl;
+  let uploadedAvatar = null;
+
+  if (req.file && hasCloudflareImagesConfig()) {
+    uploadedAvatar = await uploadImageToCloudflare(req.file, {
+      type: "avatar",
+      email: normalizedEmail,
+      username: normalizedUsername,
+    });
+  }
+
+  const avatarUrl = req.file
+    ? uploadedAvatar?.url || `/uploads/avatars/${req.file.filename}`
+    : existingUser?.avatarUrl;
   let user = existingUser;
 
   if (user) {
+    const previousAvatarImageId = user.avatarImageId;
+
     user.name = name;
     user.username = normalizedUsername;
     user.email = normalizedEmail;
     user.password = password;
     user.role = resolvedRole;
     user.avatarUrl = avatarUrl;
+    user.avatarImageId = uploadedAvatar?.id || user.avatarImageId;
     user.isEmailVerified = false;
     user.emailVerificationCodeHash = hashResetCode(verificationCode);
     user.emailVerificationExpiresAt = new Date(
       Date.now() + env.passwordResetCodeTtlMinutes * 60 * 1000,
     );
     await user.save();
+
+    if (uploadedAvatar?.id && previousAvatarImageId && previousAvatarImageId !== uploadedAvatar.id) {
+      deleteImageFromCloudflare(previousAvatarImageId).catch(() => {});
+    }
   } else {
     user = await User.create({
       name,
@@ -95,6 +119,7 @@ export const signup = asyncHandler(async (req, res) => {
       password,
       role: resolvedRole,
       avatarUrl,
+      avatarImageId: uploadedAvatar?.id,
       isEmailVerified: false,
       emailVerificationCodeHash: hashResetCode(verificationCode),
       emailVerificationExpiresAt: new Date(
@@ -377,7 +402,23 @@ export const updateProfile = asyncHandler(async (req, res) => {
   }
 
   if (req.file) {
-    user.avatarUrl = `/uploads/avatars/${req.file.filename}`;
+    let uploadedAvatar = null;
+
+    if (hasCloudflareImagesConfig()) {
+      uploadedAvatar = await uploadImageToCloudflare(req.file, {
+        type: "avatar",
+        userId: user.id,
+        username: user.username,
+      });
+    }
+
+    const previousAvatarImageId = user.avatarImageId;
+    user.avatarUrl = uploadedAvatar?.url || `/uploads/avatars/${req.file.filename}`;
+    user.avatarImageId = uploadedAvatar?.id || user.avatarImageId;
+
+    if (uploadedAvatar?.id && previousAvatarImageId && previousAvatarImageId !== uploadedAvatar.id) {
+      deleteImageFromCloudflare(previousAvatarImageId).catch(() => {});
+    }
   }
 
   await user.save();

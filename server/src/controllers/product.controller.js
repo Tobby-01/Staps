@@ -4,6 +4,11 @@ import { Vendor } from "../models/vendor.model.js";
 import { ApiError } from "../utils/api-error.js";
 import { asyncHandler } from "../utils/async-handler.js";
 
+import {
+  deleteImageFromCloudflare,
+  hasCloudflareImagesConfig,
+  uploadImagesToCloudflare,
+} from "../services/cloudflare-images.service.js";
 import { createBulkNotifications } from "../services/notification.service.js";
 
 const attachVendorMetadata = async (products) => {
@@ -126,7 +131,18 @@ export const createProduct = asyncHandler(async (req, res) => {
     throw new ApiError(400, "Name, price, description, and category are required.");
   }
 
-  const imagePaths = (req.files || []).map((file) => `/uploads/products/${file.filename}`);
+  const uploadedImages = req.files?.length && hasCloudflareImagesConfig()
+    ? await uploadImagesToCloudflare(req.files, (_file, index) => ({
+        type: "product",
+        vendorId: req.user.id,
+        slot: index,
+        name,
+      }))
+    : [];
+  const imagePaths = uploadedImages.length
+    ? uploadedImages.map((image) => image.url)
+    : (req.files || []).map((file) => `/uploads/products/${file.filename}`);
+  const imageIds = uploadedImages.map((image) => image.id);
 
   const product = await Product.create({
     vendor: req.user.id,
@@ -135,7 +151,9 @@ export const createProduct = asyncHandler(async (req, res) => {
     description,
     category,
     image: imagePaths[0],
+    imageId: imageIds[0],
     images: imagePaths,
+    imageIds,
     isFlashSale: isFlashSale === "true" || isFlashSale === true,
     discountPrice: discountPrice ? Number(discountPrice) : undefined,
     flashSaleEndTime: flashSaleEndTime || undefined,
@@ -196,9 +214,33 @@ export const updateProduct = asyncHandler(async (req, res) => {
   }
 
   if (req.files?.length) {
-    const imagePaths = req.files.map((file) => `/uploads/products/${file.filename}`);
+    const uploadedImages = hasCloudflareImagesConfig()
+      ? await uploadImagesToCloudflare(req.files, (_file, index) => ({
+          type: "product",
+          vendorId: req.user.id,
+          productId: product.id,
+          slot: index,
+          name: product.name,
+        }))
+      : [];
+    const imagePaths = uploadedImages.length
+      ? uploadedImages.map((image) => image.url)
+      : req.files.map((file) => `/uploads/products/${file.filename}`);
+    const imageIds = uploadedImages.map((image) => image.id);
+    const previousImageIds = [...(product.imageIds || [])];
+
     product.image = imagePaths[0];
+    product.imageId = imageIds[0];
     product.images = imagePaths;
+    product.imageIds = imageIds;
+
+    if (imageIds.length) {
+      await Promise.all(
+        previousImageIds
+          .filter((imageId) => imageId && !imageIds.includes(imageId))
+          .map((imageId) => deleteImageFromCloudflare(imageId).catch(() => {})),
+      );
+    }
   }
 
   await product.save();

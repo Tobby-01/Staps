@@ -29,7 +29,12 @@ const productSchema = new mongoose.Schema(
       trim: true,
     },
     image: String,
+    imageId: String,
     images: {
+      type: [String],
+      default: [],
+    },
+    imageIds: {
       type: [String],
       default: [],
     },

@@ -123,3 +123,4 @@ VITE_API_BASE_URL=https://your-api.onrender.com
 - Uploaded product images, avatars, and vendor documents are currently stored on the backend filesystem. For long-term production reliability, move uploads to persistent object storage such as Cloudinary, S3, or Supabase Storage.
 - Authentication cookies use secure cross-site settings in production, so both frontend and backend must be served over HTTPS.
 - To send the one-time “email delivery is back online” broadcast to all users, run `npm run notify:mailing-restored --workspace server` after confirming SMTP is working.
+- Product images and profile pictures can use Cloudflare Images by setting `CLOUDFLARE_IMAGES_ACCOUNT_ID`, `CLOUDFLARE_IMAGES_API_TOKEN`, and optionally `CLOUDFLARE_IMAGES_VARIANT`. If those are not set, STAPS falls back to local uploads.
