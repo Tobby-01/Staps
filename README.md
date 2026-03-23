@@ -103,6 +103,8 @@ Important production values:
 - `MONGODB_URI=<your-mongodb-atlas-uri>`
 - `JWT_SECRET=<strong-random-secret>`
 - `PAYSTACK_CALLBACK_URL=https://your-frontend.vercel.app/payment/callback`
+- Optional SMTP safety timeouts:
+  `SMTP_CONNECTION_TIMEOUT_MS=10000`, `SMTP_GREETING_TIMEOUT_MS=10000`, `SMTP_SOCKET_TIMEOUT_MS=15000`
 
 ### Frontend on Vercel
 

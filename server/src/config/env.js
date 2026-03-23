@@ -46,6 +46,9 @@ export const env = {
   smtpUser: process.env.SMTP_USER || "",
   smtpPass: process.env.SMTP_PASS || "",
   mailFrom: process.env.MAIL_FROM || "",
+  smtpConnectionTimeoutMs: Number(process.env.SMTP_CONNECTION_TIMEOUT_MS || 10000),
+  smtpGreetingTimeoutMs: Number(process.env.SMTP_GREETING_TIMEOUT_MS || 10000),
+  smtpSocketTimeoutMs: Number(process.env.SMTP_SOCKET_TIMEOUT_MS || 15000),
   paystackSecretKey: process.env.PAYSTACK_SECRET_KEY || "",
   paystackBaseUrl: process.env.PAYSTACK_BASE_URL || "https://api.paystack.co",
   paystackCallbackUrl:

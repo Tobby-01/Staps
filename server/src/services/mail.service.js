@@ -27,6 +27,9 @@ const getTransporter = () => {
       host: env.smtpHost,
       port: env.smtpPort,
       secure: env.smtpSecure,
+      connectionTimeout: env.smtpConnectionTimeoutMs,
+      greetingTimeout: env.smtpGreetingTimeoutMs,
+      socketTimeout: env.smtpSocketTimeoutMs,
       auth: {
         user: env.smtpUser,
         pass: env.smtpPass,
@@ -56,11 +59,23 @@ export const verifyMailTransport = async () => {
   };
 };
 
+const sendMail = async (payload) => {
+  try {
+    await getTransporter().sendMail(payload);
+  } catch (error) {
+    throw new ApiError(
+      503,
+      "We could not send email right now. Please check SMTP settings and try again.",
+      { cause: error?.message || String(error) },
+    );
+  }
+};
+
 export const sendPasswordResetEmail = async ({ to, name, code }) => {
   const appName = "STAPS";
   const greeting = name?.trim() || "there";
 
-  await getTransporter().sendMail({
+  await sendMail({
     from: env.mailFrom,
     to,
     subject: `${appName} password reset code`,
@@ -92,7 +107,7 @@ export const sendPasswordResetEmail = async ({ to, name, code }) => {
 export const sendSignupVerificationEmail = async ({ to, name, code }) => {
   const greeting = name?.trim() || "there";
 
-  await getTransporter().sendMail({
+  await sendMail({
     from: env.mailFrom,
     to,
     subject: "STAPS verification pin",
@@ -181,7 +196,7 @@ export const sendWelcomeEmail = async ({
       ? "Your seller account is ready. You can now complete onboarding, set up payout details, and start listing products once approved."
       : "Your shopper account is ready. You can now track orders, manage reviews, and browse campus products with escrow protection.";
 
-  await getTransporter().sendMail({
+  await sendMail({
     from: env.mailFrom,
     to,
     subject: `Welcome to STAPS, ${greeting}`,
@@ -242,7 +257,7 @@ export const sendVendorNewOrderEmail = async ({
   const dashboardUrl = `${env.clientUrl}/vendor`;
   const orderNumber = formatOrderNumber(orderId);
 
-  await getTransporter().sendMail({
+  await sendMail({
     from: env.mailFrom,
     to,
     subject: `New STAPS order ${orderNumber}: ${productName}`,
@@ -338,7 +353,7 @@ export const sendShopperOrderStatusEmail = async ({
     return;
   }
 
-  await getTransporter().sendMail({
+  await sendMail({
     from: env.mailFrom,
     to,
     subject: statusCopy.subject,
@@ -406,7 +421,7 @@ export const sendChatMessageEmail = async ({
   const senderLabel = senderRole === "vendor" ? "vendor" : "shopper";
   const chatUrl = `${env.clientUrl}/profiles/${senderProfileId}`;
 
-  await getTransporter().sendMail({
+  await sendMail({
     from: env.mailFrom,
     to,
     subject: `New STAPS message from ${senderName}`,

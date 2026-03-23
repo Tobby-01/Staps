@@ -4,6 +4,7 @@ const defaultHeaders = {
 
 export const apiBaseUrl = (import.meta.env.VITE_API_BASE_URL || "").replace(/\/+$/, "");
 const authTokenStorageKey = "staps_auth_token";
+const requestTimeoutMs = 30000;
 
 const apiUnavailableMessage = apiBaseUrl
   ? "STAPS is temporarily unavailable right now. Please refresh and try again in a moment."
@@ -57,10 +58,16 @@ export const resolveAssetUrl = (path) => {
 export const apiRequest = async (path, options = {}) => {
   let response;
   const storedToken = getStoredAuthToken();
+  const controller = new AbortController();
+  const timeoutId =
+    typeof window !== "undefined"
+      ? window.setTimeout(() => controller.abort(), requestTimeoutMs)
+      : setTimeout(() => controller.abort(), requestTimeoutMs);
 
   try {
     response = await fetch(buildApiUrl(path), {
       credentials: "include",
+      signal: controller.signal,
       headers: {
         ...defaultHeaders,
         ...(options.body instanceof FormData ? {} : { "Content-Type": "application/json" }),
@@ -71,8 +78,14 @@ export const apiRequest = async (path, options = {}) => {
       },
       ...options,
     });
-  } catch (_error) {
+  } catch (error) {
+    if (error?.name === "AbortError") {
+      throw new Error("STAPS took too long to respond. Please try again in a moment.");
+    }
+
     throw new Error(apiUnavailableMessage);
+  } finally {
+    clearTimeout(timeoutId);
   }
 
   const contentType = response.headers.get("content-type") || "";

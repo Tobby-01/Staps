@@ -206,11 +206,20 @@ export const resendSignupVerification = asyncHandler(async (req, res) => {
   );
   await user.save();
 
-  await sendSignupVerificationEmail({
-    to: user.email,
-    name: user.name,
-    code: verificationCode,
-  });
+  try {
+    await sendSignupVerificationEmail({
+      to: user.email,
+      name: user.name,
+      code: verificationCode,
+    });
+  } catch (error) {
+    console.error("Failed to resend signup verification email");
+    console.error(error);
+    throw new ApiError(
+      503,
+      "We could not resend your verification pin right now. Please try again in a moment.",
+    );
+  }
 
   res.json({
     success: true,
@@ -269,11 +278,21 @@ export const requestPasswordReset = asyncHandler(async (req, res) => {
       Date.now() + env.passwordResetCodeTtlMinutes * 60 * 1000,
     );
     await user.save();
-    await sendPasswordResetEmail({
-      to: user.email,
-      name: user.name,
-      code: resetCode,
-    });
+
+    try {
+      await sendPasswordResetEmail({
+        to: user.email,
+        name: user.name,
+        code: resetCode,
+      });
+    } catch (error) {
+      console.error("Failed to send password reset email");
+      console.error(error);
+      throw new ApiError(
+        503,
+        "We could not send your reset code right now. Please try again in a moment.",
+      );
+    }
   }
 
   res.json({
