@@ -9,7 +9,7 @@ import { ApiError } from "../utils/api-error.js";
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-const hasMailConfig = () =>
+export const hasMailConfig = () =>
   Boolean(env.smtpHost && env.smtpPort && env.smtpUser && env.smtpPass && env.mailFrom);
 
 let transporter;
@@ -35,6 +35,25 @@ const getTransporter = () => {
   }
 
   return transporter;
+};
+
+export const verifyMailTransport = async () => {
+  if (!hasMailConfig()) {
+    throw new ApiError(
+      500,
+      "Email service is not configured. Missing SMTP_HOST, SMTP_PORT, SMTP_USER, SMTP_PASS, or MAIL_FROM.",
+    );
+  }
+
+  const client = getTransporter();
+  await client.verify();
+
+  return {
+    host: env.smtpHost,
+    port: env.smtpPort,
+    user: env.smtpUser,
+    from: env.mailFrom,
+  };
 };
 
 export const sendPasswordResetEmail = async ({ to, name, code }) => {

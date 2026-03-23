@@ -112,6 +112,10 @@ export const signup = asyncHandler(async (req, res) => {
   } catch (error) {
     console.error("Failed to send signup verification email");
     console.error(error);
+    throw new ApiError(
+      503,
+      "We could not send your verification pin right now. Please try again in a moment.",
+    );
   }
 
   clearAuthCookie(res);
