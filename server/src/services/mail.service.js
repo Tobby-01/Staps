@@ -70,6 +70,37 @@ export const sendPasswordResetEmail = async ({ to, name, code }) => {
   });
 };
 
+export const sendSignupVerificationEmail = async ({ to, name, code }) => {
+  const greeting = name?.trim() || "there";
+
+  await getTransporter().sendMail({
+    from: env.mailFrom,
+    to,
+    subject: "STAPS verification pin",
+    text: [
+      `Hello ${greeting},`,
+      "",
+      `Use this 4-digit verification pin to activate your STAPS account: ${code}`,
+      "",
+      `This pin expires in ${env.passwordResetCodeTtlMinutes} minutes.`,
+      "If you did not start this signup, you can ignore this email.",
+    ].join("\n"),
+    html: `
+      <div style="font-family: Arial, sans-serif; line-height: 1.6; color: #1f2937;">
+        <p>Hello ${greeting},</p>
+        <p>Use this 4-digit verification pin to activate your <strong>STAPS</strong> account.</p>
+        <p style="margin: 24px 0;">
+          <span style="display: inline-block; font-size: 28px; font-weight: 700; letter-spacing: 10px; padding: 12px 18px; border-radius: 12px; background: #eef2ff; color: #6e54ef;">
+            ${code}
+          </span>
+        </p>
+        <p>This pin expires in ${env.passwordResetCodeTtlMinutes} minutes.</p>
+        <p>If you did not start this signup, you can ignore this email.</p>
+      </div>
+    `,
+  });
+};
+
 const formatImageUrl = (imagePath = "") => {
   if (!imagePath) {
     return "";
@@ -337,6 +368,51 @@ export const sendShopperOrderStatusEmail = async ({
         <p>
           <a href="${dashboardUrl}" style="display: inline-block; background: #ea6b2d; color: #ffffff; text-decoration: none; padding: 12px 18px; border-radius: 999px; font-weight: 700;">
             Track your order
+          </a>
+        </p>
+      </div>
+    `,
+  });
+};
+
+export const sendChatMessageEmail = async ({
+  to,
+  recipientName,
+  senderName,
+  senderRole,
+  messageBody,
+  senderProfileId,
+}) => {
+  const greeting = recipientName?.trim() || "there";
+  const senderLabel = senderRole === "vendor" ? "vendor" : "shopper";
+  const chatUrl = `${env.clientUrl}/profiles/${senderProfileId}`;
+
+  await getTransporter().sendMail({
+    from: env.mailFrom,
+    to,
+    subject: `New STAPS message from ${senderName}`,
+    text: [
+      `Hello ${greeting},`,
+      "",
+      `You have a new message from ${senderName} on STAPS.`,
+      `Sender type: ${senderLabel}`,
+      "",
+      `Message preview: ${messageBody}`,
+      "",
+      `Reply here: ${chatUrl}`,
+    ].join("\n"),
+    html: `
+      <div style="font-family: Arial, sans-serif; line-height: 1.6; color: #1f2937; max-width: 640px;">
+        <p>Hello ${greeting},</p>
+        <p>You have a new message from <strong>${senderName}</strong> on STAPS.</p>
+        <div style="border: 1px solid #e5e7eb; border-radius: 20px; padding: 20px; margin: 24px 0; background: #ffffff;">
+          <p style="margin: 0; color: #6b7280; text-transform: capitalize;">Sender type: ${senderLabel}</p>
+          <p style="margin: 14px 0 0; font-weight: 700;">Message preview</p>
+          <p style="margin: 8px 0 0; color: #374151;">${messageBody}</p>
+        </div>
+        <p>
+          <a href="${chatUrl}" style="display: inline-block; background: #6e54ef; color: #ffffff; text-decoration: none; padding: 12px 18px; border-radius: 999px; font-weight: 700;">
+            Open chat
           </a>
         </p>
       </div>

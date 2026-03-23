@@ -7,6 +7,8 @@ import { ApiError } from "../utils/api-error.js";
 import { createNotification } from "./notification.service.js";
 import { releaseEscrowToVendor } from "./paystack.service.js";
 
+const formatOrderNumber = (orderId = "") => `#${String(orderId).slice(-6).toUpperCase()}`;
+
 export const computeCancelableUntil = (createdAt = new Date()) =>
   new Date(createdAt.getTime() + env.cancelWindowMinutes * 60 * 1000);
 
@@ -38,7 +40,7 @@ export const releaseVendorPayoutForOrder = async (
         trigger === "vendor_request"
           ? "You requested a payout, but your payout account is not ready yet. Add or update payout details to receive funds."
           : "A shopper confirmed delivery. Add or update payout details so escrow can be released.",
-      metadata: { orderId: order.id },
+      metadata: { orderId: order.id, orderNumber: formatOrderNumber(order.id) },
     });
 
     return order;
@@ -61,7 +63,7 @@ export const releaseVendorPayoutForOrder = async (
         trigger === "vendor_request"
           ? "Your payout request was approved and funds have been released."
           : "Payment for your completed order has been released.",
-      metadata: { orderId: order.id },
+      metadata: { orderId: order.id, orderNumber: formatOrderNumber(order.id) },
     });
   } catch (_error) {
     order.vendorTransferStatus = "release_pending";
@@ -75,7 +77,7 @@ export const releaseVendorPayoutForOrder = async (
         trigger === "vendor_request"
           ? "Your payout request is pending and needs follow-up."
           : "A shopper confirmed delivery. Escrow release is pending and needs follow-up.",
-      metadata: { orderId: order.id },
+      metadata: { orderId: order.id, orderNumber: formatOrderNumber(order.id) },
     });
   }
 
@@ -99,7 +101,7 @@ export const transitionOrderToCompleted = async (order) => {
       type: "delivery_confirmed",
       title: "Delivery confirmed by shopper",
       message: "A shopper confirmed delivery for an order that has already been paid out.",
-      metadata: { orderId: order.id },
+      metadata: { orderId: order.id, orderNumber: formatOrderNumber(order.id) },
     });
 
     return order;

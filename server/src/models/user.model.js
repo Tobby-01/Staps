@@ -36,6 +36,18 @@ const userSchema = new mongoose.Schema(
       default: ROLES.USER,
     },
     avatarUrl: String,
+    isEmailVerified: {
+      type: Boolean,
+      default: false,
+    },
+    emailVerificationCodeHash: {
+      type: String,
+      select: false,
+    },
+    emailVerificationExpiresAt: {
+      type: Date,
+      select: false,
+    },
     passwordResetCodeHash: {
       type: String,
       select: false,

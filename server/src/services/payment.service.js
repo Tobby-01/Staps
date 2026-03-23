@@ -7,6 +7,8 @@ import { sendVendorNewOrderEmail } from "./mail.service.js";
 import { createNotification } from "./notification.service.js";
 import { verifyTransaction } from "./paystack.service.js";
 
+const formatOrderNumber = (orderId = "") => `#${String(orderId).slice(-6).toUpperCase()}`;
+
 const finalizeOrderPayment = async ({ payment, reference }) => {
   const order =
     (await Order.findOne({ paystackReference: reference })) ||
@@ -41,7 +43,7 @@ const finalizeOrderPayment = async ({ payment, reference }) => {
     type: "payment_confirmed",
     title: "Payment confirmed",
     message: "A shopper has paid for a new order.",
-    metadata: { orderId: order.id },
+    metadata: { orderId: order.id, orderNumber: formatOrderNumber(order.id) },
   });
 
   try {

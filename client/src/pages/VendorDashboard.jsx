@@ -27,10 +27,30 @@ const initialProduct = {
   images: [],
 };
 
+const notificationTimeFormatter = new Intl.DateTimeFormat("en-NG", {
+  dateStyle: "medium",
+  timeStyle: "short",
+});
+
+const formatNotificationTime = (value) => {
+  if (!value) {
+    return "";
+  }
+
+  const date = new Date(value);
+
+  if (Number.isNaN(date.getTime())) {
+    return "";
+  }
+
+  return notificationTimeFormatter.format(date);
+};
+
 export const VendorDashboard = () => {
   const [profile, setProfile] = useState(null);
   const [orders, setOrders] = useState([]);
   const [products, setProducts] = useState([]);
+  const [notifications, setNotifications] = useState([]);
   const [banks, setBanks] = useState([]);
   const [form, setForm] = useState(initialProduct);
   const [editingProductId, setEditingProductId] = useState("");
@@ -67,16 +87,24 @@ export const VendorDashboard = () => {
   );
 
   const loadDashboard = async () => {
-    const [vendorResponse, ordersResponse, productsResponse, banksResponse] = await Promise.all([
+    const [
+      vendorResponse,
+      ordersResponse,
+      productsResponse,
+      banksResponse,
+      notificationsResponse,
+    ] = await Promise.all([
       apiRequest("/api/vendors/me"),
       apiRequest("/api/orders"),
       apiRequest("/api/products"),
       apiRequest("/api/vendors/payout/banks"),
+      apiRequest("/api/notifications"),
     ]);
 
     setProfile(vendorResponse.vendor);
     setBanks((banksResponse.banks || []).filter((bank) => bank.active !== false));
     setOrders(ordersResponse.orders || []);
+    setNotifications(notificationsResponse.notifications || []);
     setProducts(
       (productsResponse.products || []).filter(
         (product) => product.vendor?._id === vendorResponse.vendor?.user?._id,
@@ -253,6 +281,23 @@ export const VendorDashboard = () => {
           <span className={error ? "text-red-600" : "text-staps-orange"}>{error || message}</span>
         </div>
       )}
+
+      <section className="surface-card p-5">
+        <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+          <div>
+            <p className="text-sm font-bold uppercase tracking-[0.25em] text-[#6e54ef]">
+              Separate profiles
+            </p>
+            <h2 className="mt-2 font-display text-2xl font-extrabold">Need to shop too?</h2>
+            <p className="mt-2 max-w-2xl text-sm text-staps-ink/65">
+              Vendor accounts can only manage products, orders, and payouts. To buy from STAPS, create a separate shopper account.
+            </p>
+          </div>
+          <Link to="/signup" className="primary-button text-center">
+            Shop now
+          </Link>
+        </div>
+      </section>
 
       <section className="grid gap-6 lg:grid-cols-[0.95fr_1.05fr]">
         <form onSubmit={createProduct} className="surface-card p-6">
@@ -579,6 +624,37 @@ export const VendorDashboard = () => {
                 })
               ) : (
                 <p className="text-sm text-staps-ink/65">New orders will appear here.</p>
+              )}
+            </div>
+          </section>
+
+          <section className="surface-card p-6">
+            <p className="text-sm font-bold uppercase tracking-[0.25em] text-[#6e54ef]">
+              Alerts
+            </p>
+            <h2 className="mt-2 font-display text-2xl font-extrabold">Notifications</h2>
+            <div className="mt-5 space-y-3">
+              {notifications.length ? (
+                notifications.map((notification) => (
+                  <div key={notification._id} className="rounded-2xl bg-staps-mist p-4">
+                    <div className="flex flex-wrap items-center justify-between gap-2">
+                      <p className="font-semibold">{notification.title}</p>
+                      {notification.metadata?.orderNumber ? (
+                        <span className="rounded-full bg-white px-3 py-1 text-xs font-semibold text-[#5a49d6]">
+                          {notification.metadata.orderNumber}
+                        </span>
+                      ) : null}
+                    </div>
+                    <p className="mt-1 text-sm text-staps-ink/65">{notification.message}</p>
+                    {formatNotificationTime(notification.createdAt) ? (
+                      <p className="mt-3 text-xs font-semibold uppercase tracking-[0.14em] text-staps-ink/45">
+                        {formatNotificationTime(notification.createdAt)}
+                      </p>
+                    ) : null}
+                  </div>
+                ))
+              ) : (
+                <p className="text-sm text-staps-ink/65">No new alerts yet.</p>
               )}
             </div>
           </section>

@@ -43,6 +43,7 @@ export const FavoritesProvider = ({ children }) => {
   };
 
   const isFavorite = (product) => items.some((item) => matchesItem(item, product));
+  const clearFavorites = () => setItems([]);
 
   return (
     <FavoritesContext.Provider
@@ -51,6 +52,7 @@ export const FavoritesProvider = ({ children }) => {
         count: items.length,
         toggleFavorite,
         isFavorite,
+        clearFavorites,
       }}
     >
       {children}

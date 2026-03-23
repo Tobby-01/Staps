@@ -5,9 +5,11 @@ import { Order } from "../models/order.model.js";
 import { User } from "../models/user.model.js";
 import { ApiError } from "../utils/api-error.js";
 import { asyncHandler } from "../utils/async-handler.js";
+import { sendChatMessageEmail } from "../services/mail.service.js";
+import { createNotification } from "../services/notification.service.js";
 
 const resolveChatPair = async (currentUser, otherUserId) => {
-  const otherUser = await User.findById(otherUserId).select("name username role avatarUrl");
+  const otherUser = await User.findById(otherUserId).select("name username role avatarUrl email");
   if (!otherUser) {
     throw new ApiError(404, "User not found.");
   }
@@ -124,6 +126,33 @@ export const sendChatMessage = asyncHandler(async (req, res) => {
 
   conversation.lastMessageAt = message.createdAt;
   await conversation.save();
+
+  await createNotification({
+    recipient: otherUser.id,
+    type: "chat_message",
+    title: "New message on STAPS",
+    message: `${req.user.name} sent you a message.`,
+    metadata: {
+      conversationId: conversation.id,
+      senderId: req.user.id,
+    },
+  });
+
+  try {
+    if (otherUser.email) {
+      await sendChatMessageEmail({
+        to: otherUser.email,
+        recipientName: otherUser.name,
+        senderName: req.user.name,
+        senderRole: req.user.role,
+        messageBody: body,
+        senderProfileId: req.user.id,
+      });
+    }
+  } catch (error) {
+    console.error("Failed to send chat message email");
+    console.error(error);
+  }
 
   const populatedMessage = await Message.findById(message.id)
     .populate("sender", "name username avatarUrl role")

@@ -30,7 +30,7 @@ export const AuthProvider = ({ children }) => {
       body: JSON.stringify(credentials),
     });
     setStoredAuthToken(response.token || "");
-    setUser(response.user);
+    setUser(response.user || null);
     return response;
   };
 
@@ -40,9 +40,25 @@ export const AuthProvider = ({ children }) => {
       body: payload instanceof FormData ? payload : JSON.stringify(payload),
     });
     setStoredAuthToken(response.token || "");
-    setUser(response.user);
+    setUser(response.user || null);
     return response;
   };
+
+  const verifySignup = async ({ email, code }) => {
+    const response = await apiRequest("/api/auth/signup/verify", {
+      method: "POST",
+      body: JSON.stringify({ email, code }),
+    });
+    setStoredAuthToken(response.token || "");
+    setUser(response.user || null);
+    return response;
+  };
+
+  const resendSignupVerification = async (email) =>
+    apiRequest("/api/auth/signup/resend-pin", {
+      method: "POST",
+      body: JSON.stringify({ email }),
+    });
 
   const logout = async () => {
     await apiRequest("/api/auth/logout", { method: "POST" });
@@ -56,6 +72,8 @@ export const AuthProvider = ({ children }) => {
     isAuthenticated: Boolean(user),
     login,
     signup,
+    verifySignup,
+    resendSignupVerification,
     logout,
     refreshUser,
   };

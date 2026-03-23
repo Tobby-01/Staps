@@ -5,6 +5,24 @@ import { apiRequest, resolveAssetUrl } from "../lib/api.js";
 import { useAuth } from "../state/AuthContext.jsx";
 
 const supportEmail = "support@staps.app";
+const notificationTimeFormatter = new Intl.DateTimeFormat("en-NG", {
+  dateStyle: "medium",
+  timeStyle: "short",
+});
+
+const formatNotificationTime = (value) => {
+  if (!value) {
+    return "";
+  }
+
+  const date = new Date(value);
+
+  if (Number.isNaN(date.getTime())) {
+    return "";
+  }
+
+  return notificationTimeFormatter.format(date);
+};
 
 export const ShopperDashboard = () => {
   const { user, refreshUser } = useAuth();
@@ -571,8 +589,20 @@ export const ShopperDashboard = () => {
               {notifications.length ? (
                 notifications.map((notification) => (
                   <div key={notification._id} className="rounded-2xl bg-staps-mist p-4">
-                    <p className="font-semibold">{notification.title}</p>
+                    <div className="flex flex-wrap items-center justify-between gap-2">
+                      <p className="font-semibold">{notification.title}</p>
+                      {notification.metadata?.orderNumber ? (
+                        <span className="rounded-full bg-white px-3 py-1 text-xs font-semibold text-[#5a49d6]">
+                          {notification.metadata.orderNumber}
+                        </span>
+                      ) : null}
+                    </div>
                     <p className="mt-1 text-sm text-staps-ink/65">{notification.message}</p>
+                    {formatNotificationTime(notification.createdAt) ? (
+                      <p className="mt-3 text-xs font-semibold uppercase tracking-[0.14em] text-staps-ink/45">
+                        {formatNotificationTime(notification.createdAt)}
+                      </p>
+                    ) : null}
                   </div>
                 ))
               ) : (

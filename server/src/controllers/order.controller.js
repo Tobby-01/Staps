@@ -21,6 +21,8 @@ import {
 } from "../services/paystack.service.js";
 import { finalizePaystackPayment } from "../services/payment.service.js";
 
+const formatOrderNumber = (orderId = "") => `#${String(orderId).slice(-6).toUpperCase()}`;
+
 export const initializeOrderPayment = asyncHandler(async (req, res) => {
   const { productId, quantity = 1, deliveryDetails = {} } = req.body;
   const recipientName = deliveryDetails.recipientName?.trim();
@@ -179,7 +181,7 @@ export const vendorAcceptOrder = asyncHandler(async (req, res) => {
     type: "order_processing",
     title: "Order accepted",
     message: "Your order has been accepted and is being processed.",
-    metadata: { orderId: order.id },
+    metadata: { orderId: order.id, orderNumber: formatOrderNumber(order.id) },
   });
 
   try {
@@ -231,7 +233,7 @@ export const vendorShipOrder = asyncHandler(async (req, res) => {
     type: "order_shipped",
     title: "Order shipped",
     message: "Your order is on the way.",
-    metadata: { orderId: order.id },
+    metadata: { orderId: order.id, orderNumber: formatOrderNumber(order.id) },
   });
 
   try {
@@ -287,7 +289,7 @@ export const vendorDeliverOrder = asyncHandler(async (req, res) => {
     type: "order_delivered",
     title: "Order delivered",
     message: "Your order has been marked as delivered. Confirm to release payment.",
-    metadata: { orderId: order.id },
+    metadata: { orderId: order.id, orderNumber: formatOrderNumber(order.id) },
   });
 
   try {
@@ -404,7 +406,7 @@ export const cancelOrder = asyncHandler(async (req, res) => {
     type: "order_canceled",
     title: "Order canceled",
     message: "A shopper canceled an order within the allowed refund window.",
-    metadata: { orderId: order.id },
+    metadata: { orderId: order.id, orderNumber: formatOrderNumber(order.id) },
   });
 
   res.json({

@@ -4,7 +4,11 @@ import { env } from "../config/env.js";
 import { PUBLIC_SIGNUP_ROLES, ROLES } from "../constants/roles.js";
 import { ADMIN_EMAILS, resolveRoleForEmail } from "../constants/admin.js";
 import { User } from "../models/user.model.js";
-import { sendPasswordResetEmail, sendWelcomeEmail } from "../services/mail.service.js";
+import {
+  sendPasswordResetEmail,
+  sendSignupVerificationEmail,
+  sendWelcomeEmail,
+} from "../services/mail.service.js";
 import { ApiError } from "../utils/api-error.js";
 import { asyncHandler } from "../utils/async-handler.js";
 import { clearAuthCookie, setAuthCookie, signToken } from "../utils/jwt.js";
@@ -16,12 +20,14 @@ const sanitizeUser = (user) => ({
   username: user.username,
   role: user.role,
   avatarUrl: user.avatarUrl,
+  isEmailVerified: user.isEmailVerified !== false,
 });
 
 const passwordResetMessage =
   "If an account exists for this email, a password reset code has been sent.";
 
 const hashResetCode = (code) => crypto.createHash("sha256").update(code).digest("hex");
+const createVerificationCode = () => String(crypto.randomInt(1000, 10000));
 const normalizeUsername = (value) => value?.trim().toLowerCase();
 const assertValidUsername = (username) => {
   if (!username) {
@@ -51,24 +57,104 @@ export const signup = asyncHandler(async (req, res) => {
 
   assertValidUsername(normalizedUsername);
 
-  const existingUser = await User.findOne({ email: normalizedEmail });
-  if (existingUser) {
+  const existingUser = await User.findOne({ email: normalizedEmail }).select(
+    "+emailVerificationCodeHash +emailVerificationExpiresAt",
+  );
+  if (existingUser && existingUser.isEmailVerified !== false) {
     throw new ApiError(409, "An account with this email already exists.");
   }
 
   const existingUsername = await User.findOne({ username: normalizedUsername });
-  if (existingUsername) {
+  if (existingUsername && String(existingUsername._id) !== String(existingUser?._id)) {
     throw new ApiError(409, "That username is already taken.");
   }
 
-  const user = await User.create({
-    name,
-    username: normalizedUsername,
+  const verificationCode = createVerificationCode();
+  const resolvedRole = resolveRoleForEmail(normalizedEmail, role);
+  const avatarUrl = req.file ? `/uploads/avatars/${req.file.filename}` : existingUser?.avatarUrl;
+  let user = existingUser;
+
+  if (user) {
+    user.name = name;
+    user.username = normalizedUsername;
+    user.email = normalizedEmail;
+    user.password = password;
+    user.role = resolvedRole;
+    user.avatarUrl = avatarUrl;
+    user.isEmailVerified = false;
+    user.emailVerificationCodeHash = hashResetCode(verificationCode);
+    user.emailVerificationExpiresAt = new Date(
+      Date.now() + env.passwordResetCodeTtlMinutes * 60 * 1000,
+    );
+    await user.save();
+  } else {
+    user = await User.create({
+      name,
+      username: normalizedUsername,
+      email: normalizedEmail,
+      password,
+      role: resolvedRole,
+      avatarUrl,
+      isEmailVerified: false,
+      emailVerificationCodeHash: hashResetCode(verificationCode),
+      emailVerificationExpiresAt: new Date(
+        Date.now() + env.passwordResetCodeTtlMinutes * 60 * 1000,
+      ),
+    });
+  }
+
+  try {
+    await sendSignupVerificationEmail({
+      to: user.email,
+      name: user.name,
+      code: verificationCode,
+    });
+  } catch (error) {
+    console.error("Failed to send signup verification email");
+    console.error(error);
+  }
+
+  clearAuthCookie(res);
+
+  res.status(201).json({
+    success: true,
+    requiresVerification: true,
+    message: "A 4-digit verification pin has been sent to your email.",
     email: normalizedEmail,
-    password,
-    role: resolveRoleForEmail(normalizedEmail, role),
-    avatarUrl: req.file ? `/uploads/avatars/${req.file.filename}` : undefined,
   });
+});
+
+export const verifySignup = asyncHandler(async (req, res) => {
+  const normalizedEmail = req.body.email?.trim().toLowerCase();
+  const code = req.body.code?.trim();
+
+  if (!normalizedEmail || !code) {
+    throw new ApiError(400, "Email and verification pin are required.");
+  }
+
+  if (!/^\d{4}$/.test(code)) {
+    throw new ApiError(400, "Verification pin must be 4 digits.");
+  }
+
+  const user = await User.findOne({ email: normalizedEmail }).select(
+    "+emailVerificationCodeHash +emailVerificationExpiresAt",
+  );
+
+  if (
+    !user ||
+    user.isEmailVerified !== false ||
+    !user.emailVerificationCodeHash ||
+    !user.emailVerificationExpiresAt ||
+    user.emailVerificationExpiresAt.getTime() < Date.now() ||
+    user.emailVerificationCodeHash !== hashResetCode(code)
+  ) {
+    throw new ApiError(400, "Invalid or expired verification pin.");
+  }
+
+  user.isEmailVerified = true;
+  user.emailVerificationCodeHash = undefined;
+  user.emailVerificationExpiresAt = undefined;
+  await user.save();
 
   const token = signToken({ sub: user.id, role: user.role });
   setAuthCookie(res, token);
@@ -86,11 +172,45 @@ export const signup = asyncHandler(async (req, res) => {
     console.error(error);
   }
 
-  res.status(201).json({
+  res.json({
     success: true,
-    message: "Signup successful",
+    message: "Email verified successfully.",
     token,
     user: sanitizeUser(user),
+  });
+});
+
+export const resendSignupVerification = asyncHandler(async (req, res) => {
+  const normalizedEmail = req.body.email?.trim().toLowerCase();
+
+  if (!normalizedEmail) {
+    throw new ApiError(400, "Email is required.");
+  }
+
+  const user = await User.findOne({ email: normalizedEmail }).select(
+    "+emailVerificationCodeHash +emailVerificationExpiresAt",
+  );
+
+  if (!user || user.isEmailVerified !== false) {
+    throw new ApiError(404, "No pending signup was found for this email.");
+  }
+
+  const verificationCode = createVerificationCode();
+  user.emailVerificationCodeHash = hashResetCode(verificationCode);
+  user.emailVerificationExpiresAt = new Date(
+    Date.now() + env.passwordResetCodeTtlMinutes * 60 * 1000,
+  );
+  await user.save();
+
+  await sendSignupVerificationEmail({
+    to: user.email,
+    name: user.name,
+    code: verificationCode,
+  });
+
+  res.json({
+    success: true,
+    message: "A new verification pin has been sent to your email.",
   });
 });
 
@@ -101,6 +221,10 @@ export const login = asyncHandler(async (req, res) => {
   const user = await User.findOne({ email: normalizedEmail }).select("+password");
   if (!user) {
     throw new ApiError(401, "Invalid email or password.");
+  }
+
+  if (user.isEmailVerified === false) {
+    throw new ApiError(403, "Verify your email with the 4-digit pin we sent before logging in.");
   }
 
   const isPasswordValid = await user.comparePassword(password);

@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { useLocation, useNavigate } from "react-router-dom";
+import { Link, useLocation, useNavigate } from "react-router-dom";
 
 import { apiRequest, resolveAssetUrl } from "../lib/api.js";
 import { useAuth } from "../state/AuthContext.jsx";
@@ -27,6 +27,27 @@ export const CartPage = () => {
       );
     }
   }, [user]);
+
+  if (user?.role === "vendor") {
+    return (
+      <div className="mx-auto max-w-3xl surface-card p-6">
+        <p className="text-sm font-bold uppercase tracking-[0.25em] text-[#6e54ef]">Vendor workspace</p>
+        <h1 className="mt-2 font-display text-3xl font-extrabold">Vendor accounts cannot checkout</h1>
+        <p className="mt-3 text-sm leading-6 text-staps-ink/65">
+          Your vendor account is reserved for monitoring orders, processing shipments, payout setup,
+          and managing listings. To shop on STAPS, create a separate shopper profile.
+        </p>
+        <div className="mt-6 flex flex-col gap-3 sm:flex-row">
+          <Link to="/vendor" className="secondary-button text-center">
+            Go to vendor dashboard
+          </Link>
+          <Link to="/signup" className="primary-button text-center">
+            Shop now
+          </Link>
+        </div>
+      </div>
+    );
+  }
 
   const checkoutItem = async (item) => {
     if (!user) {

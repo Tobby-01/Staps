@@ -2,10 +2,34 @@ import { Link } from "react-router-dom";
 
 import { resolveAssetUrl } from "../lib/api.js";
 import { VerifiedVendorBadge } from "../components/VerifiedVendorBadge.jsx";
+import { useAuth } from "../state/AuthContext.jsx";
 import { useFavorites } from "../state/FavoritesContext.jsx";
 
 export const FavoritesPage = () => {
+  const { user } = useAuth();
   const { items } = useFavorites();
+
+  if (user?.role === "vendor") {
+    return (
+      <div className="mx-auto max-w-3xl surface-card p-6">
+        <p className="text-sm font-bold uppercase tracking-[0.25em] text-[#6e54ef]">Vendor workspace</p>
+        <h1 className="mt-2 font-display text-3xl font-extrabold">Vendor accounts do not save favourites</h1>
+        <p className="mt-3 text-sm leading-6 text-staps-ink/65">
+          Favorites, cart, and checkout are only available on shopper profiles. Use your vendor
+          dashboard to manage listings and orders, or create a separate shopper account if you also
+          want to buy products.
+        </p>
+        <div className="mt-6 flex flex-col gap-3 sm:flex-row">
+          <Link to="/vendor" className="secondary-button text-center">
+            Go to vendor dashboard
+          </Link>
+          <Link to="/signup" className="primary-button text-center">
+            Shop now
+          </Link>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">

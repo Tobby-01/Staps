@@ -1,13 +1,16 @@
 import { Link } from "react-router-dom";
 
 import { resolveAssetUrl } from "../lib/api.js";
+import { useAuth } from "../state/AuthContext.jsx";
 import { useCart } from "../state/CartContext.jsx";
 import { useFavorites } from "../state/FavoritesContext.jsx";
 import { VerifiedVendorBadge } from "./VerifiedVendorBadge.jsx";
 
 export const ProductCard = ({ product, featured = false }) => {
+  const { user } = useAuth();
   const { addToCart } = useCart();
   const { toggleFavorite, isFavorite } = useFavorites();
+  const isVendorAccount = user?.role === "vendor";
   const previewImage = resolveAssetUrl(product.image || product.images?.[0]);
   const favorite = isFavorite(product);
   const currentPrice =
@@ -22,19 +25,21 @@ export const ProductCard = ({ product, featured = false }) => {
       }`}
     >
       <div className={`relative ${featured ? "h-64 md:h-72" : "h-52 md:h-56"} ${featured ? "" : "bg-[#f6f8fc]"}`}>
-        <button
-          type="button"
-          onClick={() => toggleFavorite(product)}
-          className={`absolute right-4 top-4 z-10 rounded-full px-3 py-2 text-xs font-semibold ${
-            featured
-              ? "bg-white/90 text-[#6e54ef]"
-              : favorite
-                ? "bg-[#6e54ef] text-white shadow"
-                : "bg-white text-staps-ink/70 shadow"
-          }`}
-        >
-          {favorite ? "Saved" : "Save"}
-        </button>
+        {!isVendorAccount ? (
+          <button
+            type="button"
+            onClick={() => toggleFavorite(product)}
+            className={`absolute right-4 top-4 z-10 rounded-full px-3 py-2 text-xs font-semibold ${
+              featured
+                ? "bg-white/90 text-[#6e54ef]"
+                : favorite
+                  ? "bg-[#6e54ef] text-white shadow"
+                  : "bg-white text-staps-ink/70 shadow"
+            }`}
+          >
+            {favorite ? "Saved" : "Save"}
+          </button>
+        ) : null}
         {previewImage ? (
           <img src={previewImage} alt={product.name} className="h-full w-full object-cover" />
         ) : (
@@ -109,29 +114,47 @@ export const ProductCard = ({ product, featured = false }) => {
             </div>
           </div>
 
-          <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
-            <button
-              type="button"
-              onClick={() => addToCart(product)}
-              className={`w-full rounded-2xl px-4 py-3 text-sm font-semibold transition-all duration-300 ${
-                featured
-                  ? "bg-white text-[#5a49d6] hover:bg-white/90"
-                  : "border border-staps-ink/10 bg-white text-staps-ink hover:shadow-md"
-              }`}
-            >
-              Add to cart
-            </button>
-            <Link
-              to="/cart"
-              className={`inline-flex w-full items-center justify-center rounded-2xl px-4 py-3 text-sm font-semibold transition-all duration-300 ${
-                featured
-                  ? "border border-white/35 bg-transparent text-white hover:bg-white/10"
-                  : "bg-[#6e54ef] text-white hover:bg-[#5a49d6] hover:shadow-md hover:shadow-[#6e54ef]/25"
-              }`}
-            >
-              Checkout now
-            </Link>
-          </div>
+          {isVendorAccount ? (
+            <div className="space-y-2">
+              <p className={`text-xs ${featured ? "text-white/75" : "text-staps-ink/55"}`}>
+                Vendor accounts cannot shop. Create a separate shopper profile to buy products.
+              </p>
+              <Link
+                to="/signup"
+                className={`inline-flex w-full items-center justify-center rounded-2xl px-4 py-3 text-sm font-semibold transition-all duration-300 ${
+                  featured
+                    ? "bg-white text-[#5a49d6] hover:bg-white/90"
+                    : "bg-[#6e54ef] text-white hover:bg-[#5a49d6] hover:shadow-md hover:shadow-[#6e54ef]/25"
+                }`}
+              >
+                Shop now
+              </Link>
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+              <button
+                type="button"
+                onClick={() => addToCart(product)}
+                className={`w-full rounded-2xl px-4 py-3 text-sm font-semibold transition-all duration-300 ${
+                  featured
+                    ? "bg-white text-[#5a49d6] hover:bg-white/90"
+                    : "border border-staps-ink/10 bg-white text-staps-ink hover:shadow-md"
+                }`}
+              >
+                Add to cart
+              </button>
+              <Link
+                to="/cart"
+                className={`inline-flex w-full items-center justify-center rounded-2xl px-4 py-3 text-sm font-semibold transition-all duration-300 ${
+                  featured
+                    ? "border border-white/35 bg-transparent text-white hover:bg-white/10"
+                    : "bg-[#6e54ef] text-white hover:bg-[#5a49d6] hover:shadow-md hover:shadow-[#6e54ef]/25"
+                }`}
+              >
+                Checkout now
+              </Link>
+            </div>
+          )}
         </div>
       </div>
     </article>

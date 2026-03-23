@@ -1,5 +1,5 @@
 import { Bars3Icon, MagnifyingGlassIcon, XMarkIcon } from "@heroicons/react/24/outline";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Link, NavLink, useLocation, useNavigate } from "react-router-dom";
 
 import { useAuth } from "../state/AuthContext.jsx";
@@ -8,8 +8,8 @@ import { useFavorites } from "../state/FavoritesContext.jsx";
 
 export const Navbar = ({ search, setSearch }) => {
   const { user, logout } = useAuth();
-  const { count } = useCart();
-  const { count: favoriteCount } = useFavorites();
+  const { count, clearCart } = useCart();
+  const { count: favoriteCount, clearFavorites } = useFavorites();
   const navigate = useNavigate();
   const location = useLocation();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
@@ -22,6 +22,7 @@ export const Navbar = ({ search, setSearch }) => {
 
   const dashboardPath =
     user?.role === "admin" ? "/admin" : user?.role === "vendor" ? "/vendor" : "/dashboard";
+  const isVendorAccount = user?.role === "vendor";
 
   const closeMobileMenu = () => setMobileMenuOpen(false);
   const isMarketplaceRoute =
@@ -44,6 +45,13 @@ export const Navbar = ({ search, setSearch }) => {
       navigate("/");
     }
   };
+
+  useEffect(() => {
+    if (isVendorAccount) {
+      clearCart();
+      clearFavorites();
+    }
+  }, [isVendorAccount]);
 
   return (
     <header className="sticky top-0 z-40 px-2.5 pt-2.5 sm:px-4 sm:pt-4">
@@ -127,12 +135,20 @@ export const Navbar = ({ search, setSearch }) => {
               Orders
             </NavLink>
           )}
-          <NavLink to="/favorites" className="text-staps-ink/80 transition hover:text-staps-ink">
-            Favourites {favoriteCount ? `(${favoriteCount})` : ""}
-          </NavLink>
-          <NavLink to="/cart" className="rounded-full border border-staps-ink/10 bg-[#f3f7f0] px-5 py-3">
-            Cart ({count})
-          </NavLink>
+          {!isVendorAccount ? (
+            <>
+              <NavLink to="/favorites" className="text-staps-ink/80 transition hover:text-staps-ink">
+                Favourites {favoriteCount ? `(${favoriteCount})` : ""}
+              </NavLink>
+              <NavLink to="/cart" className="rounded-full border border-staps-ink/10 bg-[#f3f7f0] px-5 py-3">
+                Cart ({count})
+              </NavLink>
+            </>
+          ) : (
+            <NavLink to="/signup" className="rounded-full bg-[#6e54ef] px-5 py-3 text-white transition hover:bg-[#5a49d6]">
+              Shop now
+            </NavLink>
+          )}
 
           {user ? (
             <>
@@ -207,20 +223,32 @@ export const Navbar = ({ search, setSearch }) => {
                   Orders
                 </NavLink>
               )}
-              <NavLink
-                to="/favorites"
-                className="rounded-2xl border border-staps-ink/10 bg-[#f3f7f0] px-4 py-3 text-staps-ink/85"
-                onClick={closeMobileMenu}
-              >
-                Favourites {favoriteCount ? `(${favoriteCount})` : ""}
-              </NavLink>
-              <NavLink
-                to="/cart"
-                className="rounded-2xl border border-staps-ink/10 bg-[#f3f7f0] px-4 py-3"
-                onClick={closeMobileMenu}
-              >
-                Cart ({count})
-              </NavLink>
+              {!isVendorAccount ? (
+                <>
+                  <NavLink
+                    to="/favorites"
+                    className="rounded-2xl border border-staps-ink/10 bg-[#f3f7f0] px-4 py-3 text-staps-ink/85"
+                    onClick={closeMobileMenu}
+                  >
+                    Favourites {favoriteCount ? `(${favoriteCount})` : ""}
+                  </NavLink>
+                  <NavLink
+                    to="/cart"
+                    className="rounded-2xl border border-staps-ink/10 bg-[#f3f7f0] px-4 py-3"
+                    onClick={closeMobileMenu}
+                  >
+                    Cart ({count})
+                  </NavLink>
+                </>
+              ) : (
+                <NavLink
+                  to="/signup"
+                  className="rounded-2xl bg-[#6e54ef] px-4 py-3 text-center text-white transition hover:bg-[#5a49d6]"
+                  onClick={closeMobileMenu}
+                >
+                  Shop now
+                </NavLink>
+              )}
 
               {user ? (
                 <>
