@@ -1,6 +1,7 @@
 import { ROLES } from "../constants/roles.js";
 import { Conversation } from "../models/conversation.model.js";
 import { Message } from "../models/message.model.js";
+import { Notification } from "../models/notification.model.js";
 import { Order } from "../models/order.model.js";
 import { User } from "../models/user.model.js";
 import { ApiError } from "../utils/api-error.js";
@@ -54,6 +55,15 @@ const getConversationPayload = async (conversationId, currentUserId) => {
     },
     { $set: { readAt: new Date() } },
   );
+  await Notification.updateMany(
+    {
+      recipient: currentUserId,
+      type: "chat_message",
+      "metadata.conversationId": conversationId,
+      read: false,
+    },
+    { $set: { read: true } },
+  );
 
   return messages.map((message) => ({
     id: message._id,
@@ -69,6 +79,59 @@ const getConversationPayload = async (conversationId, currentUserId) => {
     },
   }));
 };
+
+const buildConversationSummary = async (conversation, currentUserId) => {
+  const participant =
+    String(conversation.shopper?._id || conversation.shopper) === String(currentUserId)
+      ? conversation.vendor
+      : conversation.shopper;
+
+  const [unreadCount, lastMessage] = await Promise.all([
+    Message.countDocuments({
+      conversation: conversation._id,
+      recipient: currentUserId,
+      readAt: { $exists: false },
+    }),
+    Message.findOne({ conversation: conversation._id })
+      .sort({ createdAt: -1 })
+      .select("body createdAt sender recipient")
+      .lean(),
+  ]);
+
+  return {
+    id: conversation._id,
+    lastMessageAt: conversation.lastMessageAt || lastMessage?.createdAt || conversation.updatedAt,
+    unreadCount,
+    lastMessagePreview: lastMessage?.body || "",
+    participant: participant
+      ? {
+          id: participant._id,
+          name: participant.name,
+          username: participant.username,
+          avatarUrl: participant.avatarUrl,
+          role: participant.role,
+        }
+      : null,
+  };
+};
+
+export const listConversations = asyncHandler(async (req, res) => {
+  const conversations = await Conversation.find({
+    $or: [{ shopper: req.user.id }, { vendor: req.user.id }],
+  })
+    .sort({ lastMessageAt: -1, updatedAt: -1 })
+    .populate("shopper", "name username avatarUrl role")
+    .populate("vendor", "name username avatarUrl role");
+
+  const items = await Promise.all(
+    conversations.map((conversation) => buildConversationSummary(conversation, req.user.id)),
+  );
+
+  res.json({
+    success: true,
+    conversations: items.filter((item) => item.participant),
+  });
+});
 
 export const getChatThread = asyncHandler(async (req, res) => {
   const { otherUser, shopperId, vendorId } = await resolveChatPair(req.user, req.params.userId);

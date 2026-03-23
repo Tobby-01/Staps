@@ -16,6 +16,8 @@ const productCategories = [
   "Art",
 ];
 
+const dashboardRefreshIntervalMs = 5000;
+
 const initialProduct = {
   name: "",
   price: "",
@@ -51,6 +53,7 @@ export const VendorDashboard = () => {
   const [orders, setOrders] = useState([]);
   const [products, setProducts] = useState([]);
   const [notifications, setNotifications] = useState([]);
+  const [conversations, setConversations] = useState([]);
   const [banks, setBanks] = useState([]);
   const [form, setForm] = useState(initialProduct);
   const [editingProductId, setEditingProductId] = useState("");
@@ -86,39 +89,80 @@ export const VendorDashboard = () => {
     [editImagePreviews],
   );
 
-  const loadDashboard = async () => {
-    const [
-      vendorResponse,
-      ordersResponse,
-      productsResponse,
-      banksResponse,
-      notificationsResponse,
-    ] = await Promise.all([
-      apiRequest("/api/vendors/me"),
-      apiRequest("/api/orders"),
-      apiRequest("/api/products"),
-      apiRequest("/api/vendors/payout/banks"),
-      apiRequest("/api/notifications"),
-    ]);
+  const loadDashboard = async ({ silent = false } = {}) => {
+    try {
+      const [
+        vendorResponse,
+        ordersResponse,
+        productsResponse,
+        banksResponse,
+        notificationsResponse,
+        conversationsResponse,
+      ] = await Promise.all([
+        apiRequest("/api/vendors/me"),
+        apiRequest("/api/orders"),
+        apiRequest("/api/products"),
+        apiRequest("/api/vendors/payout/banks"),
+        apiRequest("/api/notifications"),
+        apiRequest("/api/chat/conversations"),
+      ]);
 
-    setProfile(vendorResponse.vendor);
-    setBanks((banksResponse.banks || []).filter((bank) => bank.active !== false));
-    setOrders(ordersResponse.orders || []);
-    setNotifications(notificationsResponse.notifications || []);
-    setProducts(
-      (productsResponse.products || []).filter(
-        (product) => product.vendor?._id === vendorResponse.vendor?.user?._id,
-      ),
-    );
-    setPayoutForm({
-      bankCode: vendorResponse.vendor?.payoutAccount?.bankCode || "",
-      accountNumber: vendorResponse.vendor?.payoutAccount?.accountNumber || "",
-    });
-    setError("");
+      setProfile(vendorResponse.vendor);
+      setBanks((banksResponse.banks || []).filter((bank) => bank.active !== false));
+      setOrders(ordersResponse.orders || []);
+      setNotifications(notificationsResponse.notifications || []);
+      setConversations(conversationsResponse.conversations || []);
+      setProducts(
+        (productsResponse.products || []).filter(
+          (product) => product.vendor?._id === vendorResponse.vendor?.user?._id,
+        ),
+      );
+      setPayoutForm({
+        bankCode: vendorResponse.vendor?.payoutAccount?.bankCode || "",
+        accountNumber: vendorResponse.vendor?.payoutAccount?.accountNumber || "",
+      });
+      setError("");
+    } catch (requestError) {
+      if (!silent) {
+        throw requestError;
+      }
+    }
   };
 
   useEffect(() => {
-    loadDashboard().catch((requestError) => setError(requestError.message));
+    let active = true;
+
+    loadDashboard().catch((requestError) => {
+      if (active) {
+        setError(requestError.message);
+      }
+    });
+
+    const refreshDashboard = () => {
+      if (!active) {
+        return;
+      }
+
+      loadDashboard({ silent: true }).catch(() => {});
+    };
+
+    const intervalId = window.setInterval(refreshDashboard, dashboardRefreshIntervalMs);
+    const handleWindowFocus = () => refreshDashboard();
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === "visible") {
+        refreshDashboard();
+      }
+    };
+
+    window.addEventListener("focus", handleWindowFocus);
+    document.addEventListener("visibilitychange", handleVisibilityChange);
+
+    return () => {
+      active = false;
+      window.clearInterval(intervalId);
+      window.removeEventListener("focus", handleWindowFocus);
+      document.removeEventListener("visibilitychange", handleVisibilityChange);
+    };
   }, []);
 
   const createProduct = async (event) => {
@@ -624,6 +668,54 @@ export const VendorDashboard = () => {
                 })
               ) : (
                 <p className="text-sm text-staps-ink/65">New orders will appear here.</p>
+              )}
+            </div>
+          </section>
+
+          <section className="surface-card p-6">
+            <p className="text-sm font-bold uppercase tracking-[0.25em] text-[#6e54ef]">
+              Messages
+            </p>
+            <h2 className="mt-2 font-display text-2xl font-extrabold">Unread chats</h2>
+            <div className="mt-5 space-y-3">
+              {conversations.length ? (
+                conversations.map((conversation) => (
+                  <Link
+                    key={conversation.id}
+                    to={`/profiles/${conversation.participant?.id}`}
+                    className="block rounded-2xl border border-staps-ink/8 bg-white p-4 transition hover:border-[#6e54ef]/30 hover:bg-[#faf8ff]"
+                  >
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="min-w-0">
+                        <p className="font-semibold text-staps-ink">
+                          {conversation.participant?.name || "Conversation"}
+                        </p>
+                        <p className="text-sm text-staps-ink/55">
+                          @{conversation.participant?.username || "user"}
+                        </p>
+                      </div>
+                      {conversation.unreadCount ? (
+                        <span className="rounded-full bg-[#6e54ef] px-3 py-1 text-xs font-semibold text-white">
+                          {conversation.unreadCount} unread
+                        </span>
+                      ) : (
+                        <span className="rounded-full bg-staps-mist px-3 py-1 text-xs font-semibold text-staps-ink/55">
+                          Up to date
+                        </span>
+                      )}
+                    </div>
+                    <p className="mt-3 truncate text-sm text-staps-ink/65">
+                      {conversation.lastMessagePreview || "Open the conversation to send a message."}
+                    </p>
+                    {formatNotificationTime(conversation.lastMessageAt) ? (
+                      <p className="mt-3 text-xs font-semibold uppercase tracking-[0.14em] text-staps-ink/45">
+                        {formatNotificationTime(conversation.lastMessageAt)}
+                      </p>
+                    ) : null}
+                  </Link>
+                ))
+              ) : (
+                <p className="text-sm text-staps-ink/65">Your chat threads will appear here.</p>
               )}
             </div>
           </section>

@@ -5,6 +5,7 @@ import { apiRequest, resolveAssetUrl } from "../lib/api.js";
 import { useAuth } from "../state/AuthContext.jsx";
 
 const supportEmail = "support@staps.app";
+const dashboardRefreshIntervalMs = 5000;
 const notificationTimeFormatter = new Intl.DateTimeFormat("en-NG", {
   dateStyle: "medium",
   timeStyle: "short",
@@ -28,6 +29,7 @@ export const ShopperDashboard = () => {
   const { user, refreshUser } = useAuth();
   const [orders, setOrders] = useState([]);
   const [notifications, setNotifications] = useState([]);
+  const [conversations, setConversations] = useState([]);
   const [reviews, setReviews] = useState([]);
   const [notice, setNotice] = useState("");
   const [error, setError] = useState("");
@@ -47,17 +49,26 @@ export const ShopperDashboard = () => {
     details: "",
   });
 
-  const loadDashboard = async () => {
-    const [ordersResponse, notificationsResponse, reviewsResponse] = await Promise.all([
-      apiRequest("/api/orders"),
-      apiRequest("/api/notifications"),
-      apiRequest(`/api/reviews?userId=${user.id}`),
-    ]);
+  const loadDashboard = async ({ silent = false } = {}) => {
+    try {
+      const [ordersResponse, notificationsResponse, reviewsResponse, conversationsResponse] =
+        await Promise.all([
+          apiRequest("/api/orders"),
+          apiRequest("/api/notifications"),
+          apiRequest(`/api/reviews?userId=${user.id}`),
+          apiRequest("/api/chat/conversations"),
+        ]);
 
-    setOrders(ordersResponse.orders || []);
-    setNotifications(notificationsResponse.notifications || []);
-    setReviews(reviewsResponse.reviews || []);
-    setError("");
+      setOrders(ordersResponse.orders || []);
+      setNotifications(notificationsResponse.notifications || []);
+      setReviews(reviewsResponse.reviews || []);
+      setConversations(conversationsResponse.conversations || []);
+      setError("");
+    } catch (requestError) {
+      if (!silent) {
+        throw requestError;
+      }
+    }
   };
 
   useEffect(() => {
@@ -65,13 +76,45 @@ export const ShopperDashboard = () => {
       return;
     }
 
+    let active = true;
+
     setProfileForm({
       name: user.name || "",
       username: user.username || "",
       avatar: null,
     });
 
-    loadDashboard().catch((requestError) => setError(requestError.message));
+    loadDashboard().catch((requestError) => {
+      if (active) {
+        setError(requestError.message);
+      }
+    });
+
+    const refreshDashboard = () => {
+      if (!active) {
+        return;
+      }
+
+      loadDashboard({ silent: true }).catch(() => {});
+    };
+
+    const intervalId = window.setInterval(refreshDashboard, dashboardRefreshIntervalMs);
+    const handleWindowFocus = () => refreshDashboard();
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === "visible") {
+        refreshDashboard();
+      }
+    };
+
+    window.addEventListener("focus", handleWindowFocus);
+    document.addEventListener("visibilitychange", handleVisibilityChange);
+
+    return () => {
+      active = false;
+      window.clearInterval(intervalId);
+      window.removeEventListener("focus", handleWindowFocus);
+      document.removeEventListener("visibilitychange", handleVisibilityChange);
+    };
   }, [user]);
 
   const completedOrders = useMemo(
@@ -579,6 +622,54 @@ export const ShopperDashboard = () => {
                 Email support
               </a>
               <p className="text-xs text-staps-ink/50">Support email: {supportEmail}</p>
+            </div>
+          </section>
+
+          <section className="surface-card p-6">
+            <p className="text-sm font-bold uppercase tracking-[0.25em] text-[#6e54ef]">
+              Messages
+            </p>
+            <h2 className="mt-2 font-display text-2xl font-extrabold">Unread chats</h2>
+            <div className="mt-5 space-y-3">
+              {conversations.length ? (
+                conversations.map((conversation) => (
+                  <Link
+                    key={conversation.id}
+                    to={`/profiles/${conversation.participant?.id}`}
+                    className="block rounded-2xl border border-staps-ink/8 bg-white p-4 transition hover:border-[#6e54ef]/30 hover:bg-[#faf8ff]"
+                  >
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="min-w-0">
+                        <p className="font-semibold text-staps-ink">
+                          {conversation.participant?.name || "Conversation"}
+                        </p>
+                        <p className="text-sm text-staps-ink/55">
+                          @{conversation.participant?.username || "user"}
+                        </p>
+                      </div>
+                      {conversation.unreadCount ? (
+                        <span className="rounded-full bg-[#6e54ef] px-3 py-1 text-xs font-semibold text-white">
+                          {conversation.unreadCount} unread
+                        </span>
+                      ) : (
+                        <span className="rounded-full bg-staps-mist px-3 py-1 text-xs font-semibold text-staps-ink/55">
+                          Up to date
+                        </span>
+                      )}
+                    </div>
+                    <p className="mt-3 truncate text-sm text-staps-ink/65">
+                      {conversation.lastMessagePreview || "Open the conversation to send a message."}
+                    </p>
+                    {formatNotificationTime(conversation.lastMessageAt) ? (
+                      <p className="mt-3 text-xs font-semibold uppercase tracking-[0.14em] text-staps-ink/45">
+                        {formatNotificationTime(conversation.lastMessageAt)}
+                      </p>
+                    ) : null}
+                  </Link>
+                ))
+              ) : (
+                <p className="text-sm text-staps-ink/65">Your chat threads will appear here.</p>
+              )}
             </div>
           </section>
 
