@@ -227,10 +227,6 @@ export const login = asyncHandler(async (req, res) => {
     throw new ApiError(401, "Invalid email or password.");
   }
 
-  if (user.isEmailVerified === false) {
-    throw new ApiError(403, "Verify your email with the 4-digit pin we sent before logging in.");
-  }
-
   const isPasswordValid = await user.comparePassword(password);
   if (!isPasswordValid) {
     throw new ApiError(401, "Invalid email or password.");
