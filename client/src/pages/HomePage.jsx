@@ -51,6 +51,7 @@ export const HomePage = () => {
   const [error, setError] = useState("");
   const [selectedVendorIds, setSelectedVendorIds] = useState([]);
   const lastSearchScrollTokenRef = useRef(0);
+  const heroShopperImage = "/hero-shopper.png";
 
   useEffect(() => {
     const loadProducts = async () => {
@@ -243,19 +244,15 @@ export const HomePage = () => {
                   </div>
 
                   <div className="relative hidden overflow-hidden rounded-[1.7rem] border border-white/70 bg-[linear-gradient(180deg,rgba(239,248,255,0.92),rgba(255,255,255,0.56))] shadow-[0_16px_40px_rgba(18,38,32,0.08)] md:block md:h-[220px] xl:h-[280px] xl:rounded-[2rem] xl:shadow-[0_24px_60px_rgba(18,38,32,0.08)]">
-                    <div className="absolute inset-x-4 top-4 rounded-full bg-white/75 px-4 py-2 text-center text-[0.64rem] font-semibold uppercase tracking-[0.18em] text-staps-ink/45 backdrop-blur md:inset-x-6 md:top-6 md:text-[0.68rem] md:tracking-[0.22em]">
-                      Transparent shopper vector space
+                    <div className="absolute inset-x-4 top-4 z-[2] rounded-full bg-white/75 px-4 py-2 text-center text-[0.64rem] font-semibold uppercase tracking-[0.18em] text-staps-ink/45 backdrop-blur md:inset-x-6 md:top-6 md:text-[0.68rem] md:tracking-[0.22em]">
+                      Campus shopper
                     </div>
                     <div className="absolute inset-0 bg-[radial-gradient(circle_at_20%_20%,rgba(132,95,255,0.16),transparent_34%),radial-gradient(circle_at_80%_28%,rgba(82,196,168,0.18),transparent_30%),radial-gradient(circle_at_50%_100%,rgba(255,198,92,0.14),transparent_28%)]" />
-                    <div className="absolute bottom-0 left-1/2 h-[180px] w-[130px] -translate-x-1/2 rounded-t-[4rem] border border-dashed border-staps-ink/12 bg-white/20 sm:h-[220px] sm:w-[160px] sm:rounded-t-[5rem] xl:h-[240px] xl:w-[180px] xl:rounded-t-[6rem]" />
-                    <div className="absolute bottom-16 left-1/2 h-20 w-20 -translate-x-1/2 rounded-full border border-dashed border-staps-ink/12 bg-white/30 sm:bottom-24 sm:h-24 sm:w-24" />
-                    <div className="absolute bottom-4 left-4 rounded-2xl bg-white/70 px-3 py-2 text-[0.7rem] leading-5 text-staps-ink/55 shadow-sm backdrop-blur sm:bottom-10 sm:left-10 sm:px-4 sm:py-3 sm:text-xs">
-                      Drop in a
-                      <br />
-                      backgroundless happy shopper
-                      <br />
-                      illustration here
-                    </div>
+                    <img
+                      src={heroShopperImage}
+                      alt="Happy shopper using STAPS"
+                      className="absolute inset-0 z-[1] h-full w-full object-contain object-bottom"
+                    />
                   </div>
                 </div>
 
