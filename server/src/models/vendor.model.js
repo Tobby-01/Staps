@@ -1,5 +1,7 @@
 import mongoose from "mongoose";
 
+import { VENDOR_SELLING_STATUS } from "../constants/vendor.js";
+
 const vendorSchema = new mongoose.Schema(
   {
     user: {
@@ -25,6 +27,23 @@ const vendorSchema = new mongoose.Schema(
     verified: {
       type: Boolean,
       default: false,
+    },
+    sellingStatus: {
+      type: String,
+      enum: Object.values(VENDOR_SELLING_STATUS),
+      default: VENDOR_SELLING_STATUS.ACTIVE,
+      index: true,
+    },
+    suspensionEndsAt: Date,
+    sellingRestrictionReason: {
+      type: String,
+      trim: true,
+      default: "",
+    },
+    sellingStatusUpdatedAt: Date,
+    sellingStatusUpdatedBy: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "User",
     },
     paymentStatus: {
       type: String,

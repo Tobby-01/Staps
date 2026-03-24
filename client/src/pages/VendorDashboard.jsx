@@ -50,6 +50,27 @@ const formatNotificationTime = (value) => {
   return notificationTimeFormatter.format(date);
 };
 
+const getSellingRestrictionCopy = (profile) => {
+  if (profile?.sellingStatus === "banned") {
+    return profile?.sellingRestrictionReason
+      ? `Your store is banned from selling. Reason: ${profile.sellingRestrictionReason}`
+      : "Your store is banned from selling.";
+  }
+
+  if (profile?.sellingStatus === "suspended") {
+    const suspensionEnd = formatNotificationTime(profile?.suspensionEndsAt);
+    const reasonCopy = profile?.sellingRestrictionReason
+      ? ` Reason: ${profile.sellingRestrictionReason}`
+      : "";
+
+    return suspensionEnd
+      ? `Your store is suspended from selling until ${suspensionEnd}.${reasonCopy}`
+      : `Your store is temporarily suspended from selling.${reasonCopy}`;
+  }
+
+  return "";
+};
+
 export const VendorDashboard = () => {
   const [profile, setProfile] = useState(null);
   const [orders, setOrders] = useState([]);
@@ -73,6 +94,9 @@ export const VendorDashboard = () => {
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
   const brandingLocked = Boolean(profile?.brandingLocked);
+  const sellingRestricted = ["suspended", "banned"].includes(profile?.sellingStatus);
+  const canManageListings = Boolean(profile?.verified) && !sellingRestricted;
+  const sellingRestrictionCopy = getSellingRestrictionCopy(profile);
 
   const brandingPreview = useMemo(
     () =>
@@ -200,6 +224,16 @@ export const VendorDashboard = () => {
   const createProduct = async (event) => {
     event.preventDefault();
 
+    if (!canManageListings) {
+      setMessage("");
+      setError(
+        sellingRestricted
+          ? sellingRestrictionCopy || "Your store cannot sell right now."
+          : "Your store must be approved before you can publish products.",
+      );
+      return;
+    }
+
     const formData = new FormData();
     formData.append("name", form.name);
     formData.append("price", form.price);
@@ -297,6 +331,16 @@ export const VendorDashboard = () => {
   };
 
   const delistProduct = async (productId, productName) => {
+    if (!canManageListings) {
+      setMessage("");
+      setError(
+        sellingRestricted
+          ? sellingRestrictionCopy || "Your store cannot update listings right now."
+          : "Your store must be approved before you can manage listings.",
+      );
+      return;
+    }
+
     const shouldContinue = window.confirm(
       `Delist "${productName}"? It will be removed from the storefront for shoppers.`,
     );
@@ -316,6 +360,16 @@ export const VendorDashboard = () => {
   };
 
   const startEditingProduct = (product) => {
+    if (!canManageListings) {
+      setMessage("");
+      setError(
+        sellingRestricted
+          ? sellingRestrictionCopy || "Your store cannot update listings right now."
+          : "Your store must be approved before you can manage listings.",
+      );
+      return;
+    }
+
     setEditingProductId(product._id);
     setEditCurrentImages(product.images?.length ? product.images : product.image ? [product.image] : []);
     setEditForm({
@@ -342,6 +396,16 @@ export const VendorDashboard = () => {
   };
 
   const saveProductChanges = async (productId) => {
+    if (!canManageListings) {
+      setMessage("");
+      setError(
+        sellingRestricted
+          ? sellingRestrictionCopy || "Your store cannot update listings right now."
+          : "Your store must be approved before you can manage listings.",
+      );
+      return;
+    }
+
     const formData = new FormData();
     formData.append("name", editForm.name);
     formData.append("price", editForm.price);
@@ -407,6 +471,17 @@ export const VendorDashboard = () => {
         <div className="surface-card p-4 text-sm">
           <span className={error ? "text-red-600" : "text-staps-orange"}>{error || message}</span>
         </div>
+      )}
+
+      {sellingRestricted && (
+        <section className="surface-card border border-amber-200 bg-amber-50/80 p-5">
+          <p className="text-sm font-bold uppercase tracking-[0.2em] text-amber-700">
+            Selling restricted
+          </p>
+          <p className="mt-2 text-sm text-amber-800">
+            {sellingRestrictionCopy || "Your store cannot accept new selling activity right now."}
+          </p>
+        </section>
       )}
 
       <section className="surface-card p-6">
@@ -554,10 +629,14 @@ export const VendorDashboard = () => {
           </p>
           <h2 className="mt-2 font-display text-3xl font-extrabold">Add a new product</h2>
           <p className="mt-2 text-sm text-staps-ink/60">
-            Vendors can now assign a category and upload multiple product images with preview.
+            {canManageListings
+              ? "Vendors can now assign a category and upload multiple product images with preview."
+              : sellingRestricted
+                ? "Listing actions are disabled while your selling access is restricted."
+                : "Your store must be approved before you can publish products."}
           </p>
 
-          <div className="mt-6 grid gap-4">
+          <fieldset disabled={!canManageListings} className="mt-6 grid gap-4">
             <input
               className="field"
               placeholder="Product name"
@@ -686,17 +765,17 @@ export const VendorDashboard = () => {
             </div>
 
             <button className="primary-button" type="submit">
-              Publish product
+              {canManageListings ? "Publish product" : "Publishing unavailable"}
             </button>
-          </div>
+          </fieldset>
         </form>
 
         <div className="space-y-6">
           <section className="surface-card p-6">
             <h2 className="font-display text-2xl font-extrabold">Payout setup</h2>
             <p className="mt-2 text-sm text-staps-ink/60">
-              Add the bank account where STAPS should send your order payouts after delivery is
-              confirmed.
+              Add the bank account where STAPS should send your order payouts after an admin approves
+              the release.
             </p>
             <form onSubmit={savePayoutAccount} className="mt-5 grid gap-4 md:grid-cols-2">
               <select
@@ -744,11 +823,13 @@ export const VendorDashboard = () => {
                   const isCompleted = order.status === "completed";
                   const payoutReleased = Boolean(order.paymentReleased);
                   const payoutRequested = Boolean(order.payoutRequestedAt);
+                  const canRequestPayout =
+                    ["shipped", "delivered", "completed"].includes(order.status) && !payoutReleased;
                   const payoutStatusCopy =
                     {
                       payment_secured: "Payment secured",
                       awaiting_payout_request: "Ready for payout request",
-                      payout_requested: "Payout requested",
+                      payout_requested: "Awaiting admin release",
                       awaiting_payout_setup: "Add payout details",
                       release_pending: "Payout pending",
                       pending: "Payout queued",
@@ -846,17 +927,19 @@ export const VendorDashboard = () => {
                               Mark shipped
                             </button>
                           )}
+                          {canRequestPayout && (
+                            <>
+                              <button
+                                className="secondary-button"
+                                type="button"
+                                onClick={() => updateOrderStatus(order._id, "request-payout")}
+                              >
+                                {payoutRequested ? "Payout requested" : "Request payout"}
+                              </button>
+                            </>
+                          )}
                           {order.status === "shipped" && (
                             <>
-                              {!payoutReleased && (
-                                <button
-                                  className="secondary-button"
-                                  type="button"
-                                  onClick={() => updateOrderStatus(order._id, "request-payout")}
-                                >
-                                  {payoutRequested ? "Payout requested" : "Request payout"}
-                                </button>
-                              )}
                               <button
                                 className="secondary-button"
                                 type="button"
@@ -1018,6 +1101,7 @@ export const VendorDashboard = () => {
                               : startEditingProduct(product)
                           }
                           className="secondary-button w-full"
+                          disabled={!canManageListings}
                         >
                           {editingProductId === product._id ? "Close editor" : "Edit listing"}
                         </button>
@@ -1025,13 +1109,17 @@ export const VendorDashboard = () => {
                           type="button"
                           onClick={() => delistProduct(product._id, product.name)}
                           className="secondary-button w-full border-red-200 bg-white text-red-600 hover:bg-red-50"
+                          disabled={!canManageListings}
                         >
                           Delist product
                         </button>
                       </div>
 
                       {editingProductId === product._id && (
-                        <div className="mt-4 space-y-3 rounded-[1.4rem] border border-staps-ink/10 bg-white p-4">
+                        <fieldset
+                          disabled={!canManageListings}
+                          className="mt-4 space-y-3 rounded-[1.4rem] border border-staps-ink/10 bg-white p-4"
+                        >
                           <p className="text-xs font-bold uppercase tracking-[0.18em] text-[#644df0]">
                             Edit listing
                           </p>
@@ -1197,6 +1285,7 @@ export const VendorDashboard = () => {
                               type="button"
                               onClick={() => saveProductChanges(product._id)}
                               className="primary-button w-full"
+                              disabled={!canManageListings}
                             >
                               Save changes
                             </button>
@@ -1208,13 +1297,17 @@ export const VendorDashboard = () => {
                               Cancel
                             </button>
                           </div>
-                        </div>
+                        </fieldset>
                       )}
                     </div>
                   </div>
                 ))
               ) : (
-                <p className="text-sm text-staps-ink/65">Publish your first product after approval.</p>
+                <p className="text-sm text-staps-ink/65">
+                  {sellingRestricted
+                    ? "Your store cannot publish listings until selling access is restored."
+                    : "Publish your first product after approval."}
+                </p>
               )}
             </div>
           </section>

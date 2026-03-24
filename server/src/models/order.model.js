@@ -108,6 +108,11 @@ const orderSchema = new mongoose.Schema(
     vendorTransferStatus: String,
     vendorTransferQueuedAt: Date,
     payoutRequestedAt: Date,
+    payoutProcessedAt: Date,
+    payoutProcessedBy: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "User",
+    },
     cancelableUntil: Date,
     paidAt: Date,
     shippedAt: Date,

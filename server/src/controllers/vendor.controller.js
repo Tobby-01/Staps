@@ -1,5 +1,6 @@
 import { env } from "../config/env.js";
 import { ROLES } from "../constants/roles.js";
+import { VENDOR_SELLING_STATUS } from "../constants/vendor.js";
 import { User } from "../models/user.model.js";
 import { Vendor } from "../models/vendor.model.js";
 import { ApiError } from "../utils/api-error.js";
@@ -12,12 +13,14 @@ import {
   resolveAccountNumber,
 } from "../services/paystack.service.js";
 import { finalizePaystackPayment } from "../services/payment.service.js";
+import { syncVendorSellingAccess } from "../services/vendor-access.service.js";
 
 export const getVendorProfile = asyncHandler(async (req, res) => {
   const vendor = await Vendor.findOne({ user: req.user.id }).populate(
     "user",
     "name email role avatarUrl username",
   );
+  await syncVendorSellingAccess(vendor);
 
   res.json({
     success: true,
@@ -110,10 +113,13 @@ export const verifyVendorFee = asyncHandler(async (req, res) => {
 
 export const listVerifiedVendors = asyncHandler(async (_req, res) => {
   const vendors = await Vendor.find({ verified: true }).populate("user", "name email");
+  await Promise.all(vendors.map((vendor) => syncVendorSellingAccess(vendor)));
 
   res.json({
     success: true,
-    vendors,
+    vendors: vendors.filter(
+      (vendor) => vendor.sellingStatus === VENDOR_SELLING_STATUS.ACTIVE,
+    ),
   });
 });
 

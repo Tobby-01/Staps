@@ -3,7 +3,6 @@ import { DEFAULT_DELIVERY_FEE } from "../constants/marketplace.js";
 import { ROLES } from "../constants/roles.js";
 import { Order } from "../models/order.model.js";
 import { Product } from "../models/product.model.js";
-import { Vendor } from "../models/vendor.model.js";
 import { ApiError } from "../utils/api-error.js";
 import { asyncHandler } from "../utils/async-handler.js";
 
@@ -12,10 +11,10 @@ import { createNotification } from "../services/notification.service.js";
 import {
   assertCancelable,
   computeCancelableUntil,
-  releaseVendorPayoutForOrder,
   runAutoConfirmSweep,
   transitionOrderToCompleted,
 } from "../services/order.service.js";
+import { listSellableVendorProfiles } from "../services/vendor-access.service.js";
 import {
   initializeTransaction,
   refundTransaction,
@@ -97,13 +96,10 @@ export const initializeOrderPayment = asyncHandler(async (req, res) => {
 
   const productMap = new Map(products.map((product) => [product.id, product]));
   const vendorIds = [...new Set(products.map((product) => product.vendor.toString()))];
-  const verifiedVendors = await Vendor.find({
-    user: { $in: vendorIds },
-    verified: true,
-  }).select("user");
+  const verifiedVendors = await listSellableVendorProfiles(vendorIds);
 
   if (verifiedVendors.length !== vendorIds.length) {
-    throw new ApiError(400, "One or more vendors are not verified to receive orders.");
+    throw new ApiError(400, "One or more vendors are not currently allowed to receive orders.");
   }
 
   const ordersPayload = checkoutItems.map((item) => {
@@ -373,7 +369,7 @@ export const vendorDeliverOrder = asyncHandler(async (req, res) => {
     recipient: order.user,
     type: "order_delivered",
     title: "Order delivered",
-    message: "Your order has been marked as delivered. Confirm to release payment.",
+    message: "Your order has been marked as delivered. Confirm when it arrives safely.",
     metadata: { orderId: order.id, orderNumber: formatOrderNumber(order.id) },
   });
 
@@ -416,12 +412,12 @@ export const confirmDelivery = asyncHandler(async (req, res) => {
 
   const updatedOrder = await transitionOrderToCompleted(order);
   const message = updatedOrder.paymentReleased
-    ? "Delivery confirmed and vendor payout released."
+    ? "Delivery confirmed successfully. Vendor payout was already settled."
     : "Delivery confirmed successfully.";
 
   res.json({
     success: true,
-    message,
+    message: message || "Delivery confirmed successfully.",
     order: updatedOrder,
   });
 });
@@ -436,8 +432,11 @@ export const vendorRequestPayout = asyncHandler(async (req, res) => {
     throw new ApiError(400, "This order has not been paid yet.");
   }
 
-  if (order.status !== ORDER_STATUS.SHIPPED) {
-    throw new ApiError(400, "You can only request payout after the order has been marked as shipped.");
+  if (![ORDER_STATUS.SHIPPED, ORDER_STATUS.DELIVERED, ORDER_STATUS.COMPLETED].includes(order.status)) {
+    throw new ApiError(
+      400,
+      "You can only request payout after the order has been marked as shipped or delivered.",
+    );
   }
 
   if (order.paymentReleased) {
@@ -448,21 +447,16 @@ export const vendorRequestPayout = asyncHandler(async (req, res) => {
     });
   }
 
-  order.payoutRequestedAt = new Date();
+  order.payoutRequestedAt = order.payoutRequestedAt || new Date();
   order.vendorTransferStatus = "payout_requested";
   await order.save();
 
-  const updatedOrder = await releaseVendorPayoutForOrder(order, { trigger: "vendor_request" });
-  const message = updatedOrder.paymentReleased
-    ? "Payout requested successfully and funds have been released."
-    : updatedOrder.vendorTransferStatus === "awaiting_payout_setup"
-      ? "Payout request saved. Add your payout details to receive funds."
-      : "Payout request saved and is pending processing.";
+  const message = "Payout request saved. An admin will review and release the funds.";
 
   res.json({
     success: true,
     message,
-    order: updatedOrder,
+    order,
   });
 });
 

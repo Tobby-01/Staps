@@ -1,15 +1,19 @@
 import { Follow } from "../models/follow.model.js";
 import { Product } from "../models/product.model.js";
-import { Vendor } from "../models/vendor.model.js";
 import {
   DEFAULT_DELIVERY_FEE,
   MAX_DELIVERY_FEE,
   MIN_DELIVERY_FEE,
 } from "../constants/marketplace.js";
+import { VENDOR_SELLING_STATUS } from "../constants/vendor.js";
 import { ApiError } from "../utils/api-error.js";
 import { asyncHandler } from "../utils/async-handler.js";
 
 import { createBulkNotifications } from "../services/notification.service.js";
+import {
+  ensureVendorCanSell,
+  listSellableVendorProfiles,
+} from "../services/vendor-access.service.js";
 
 const attachVendorMetadata = async (products) => {
   const productList = Array.isArray(products) ? products : [products];
@@ -25,12 +29,10 @@ const attachVendorMetadata = async (products) => {
     return Array.isArray(products) ? productList : productList[0];
   }
 
-  const vendorProfiles = await Vendor.find({ user: { $in: vendorUserIds } })
-    .select("user name verified")
-    .lean();
+  const vendorProfiles = await listSellableVendorProfiles(vendorUserIds);
 
   const vendorProfileMap = new Map(
-    vendorProfiles.map((vendorProfile) => [vendorProfile.user.toString(), vendorProfile]),
+    vendorProfiles.map((vendorProfile) => [vendorProfile.user.toString(), vendorProfile.toObject()]),
   );
 
   const enrichedProducts = productList.map((product) => {
@@ -47,6 +49,8 @@ const attachVendorMetadata = async (products) => {
         ...product.vendor,
         name: vendorProfile.name || product.vendor.name,
         verified: vendorProfile.verified,
+        sellingStatus: vendorProfile.sellingStatus,
+        suspensionEndsAt: vendorProfile.suspensionEndsAt,
       },
     };
   });
@@ -74,12 +78,8 @@ const matchesMarketplaceSearch = (product, searchTerm) => {
     .some((value) => String(value).toLowerCase().includes(normalizedSearch));
 };
 
-const ensureVendorVerified = async (userId) => {
-  const vendorProfile = await Vendor.findOne({ user: userId, verified: true });
-  if (!vendorProfile) {
-    throw new ApiError(403, "Only verified vendors can manage products.");
-  }
-};
+const isStorefrontAvailable = (product) =>
+  product?.vendor?.verified && product?.vendor?.sellingStatus === VENDOR_SELLING_STATUS.ACTIVE;
 
 const parseDeliveryFeeInput = (value, { fallback = DEFAULT_DELIVERY_FEE } = {}) => {
   if (value === undefined || value === null || value === "") {
@@ -120,7 +120,7 @@ export const listProducts = asyncHandler(async (req, res) => {
 
   const enrichedProducts = await attachVendorMetadata(products);
   const filteredProducts = enrichedProducts.filter((product) =>
-    matchesMarketplaceSearch(product, searchTerm),
+    isStorefrontAvailable(product) && matchesMarketplaceSearch(product, searchTerm),
   );
 
   res.json({
@@ -136,6 +136,9 @@ export const getProduct = asyncHandler(async (req, res) => {
   }
 
   const enrichedProduct = await attachVendorMetadata(product);
+  if (!isStorefrontAvailable(enrichedProduct)) {
+    throw new ApiError(404, "Product not found.");
+  }
 
   res.json({
     success: true,
@@ -144,7 +147,7 @@ export const getProduct = asyncHandler(async (req, res) => {
 });
 
 export const createProduct = asyncHandler(async (req, res) => {
-  await ensureVendorVerified(req.user.id);
+  await ensureVendorCanSell(req.user.id);
 
   const { name, price, deliveryFee, description, category, isFlashSale, discountPrice, flashSaleEndTime } = req.body;
   if (!name || price === undefined || price === null || price === "" || !description || !category) {
@@ -186,7 +189,7 @@ export const createProduct = asyncHandler(async (req, res) => {
 });
 
 export const updateProduct = asyncHandler(async (req, res) => {
-  await ensureVendorVerified(req.user.id);
+  await ensureVendorCanSell(req.user.id);
 
   const product = await Product.findOne({ _id: req.params.id, vendor: req.user.id });
   if (!product) {
@@ -243,7 +246,7 @@ export const updateProduct = asyncHandler(async (req, res) => {
 });
 
 export const deleteProduct = asyncHandler(async (req, res) => {
-  await ensureVendorVerified(req.user.id);
+  await ensureVendorCanSell(req.user.id);
 
   const product = await Product.findOne({ _id: req.params.id, vendor: req.user.id });
   if (!product) {
