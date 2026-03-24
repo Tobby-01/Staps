@@ -2,16 +2,24 @@ import { useEffect, useState } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 
 import { apiRequest, resolveAssetUrl } from "../lib/api.js";
+import {
+  formatNaira,
+  getCartItemSubtotal,
+  getCartItemTotal,
+  getProductActivePrice,
+  getProductDeliveryFee,
+} from "../lib/marketplace.js";
 import { useAuth } from "../state/AuthContext.jsx";
 import { useCart } from "../state/CartContext.jsx";
 
 export const CartPage = () => {
   const { user } = useAuth();
-  const { items, subtotal, removeFromCart, updateQuantity } = useCart();
+  const { items, subtotal, deliveryTotal, grandTotal, removeFromCart, updateQuantity } = useCart();
   const navigate = useNavigate();
   const location = useLocation();
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
+  const [checkoutPending, setCheckoutPending] = useState(false);
   const [deliveryDetails, setDeliveryDetails] = useState({
     recipientName: "",
     phone: "",
@@ -27,6 +35,45 @@ export const CartPage = () => {
       );
     }
   }, [user]);
+
+  const checkoutItems = async (selectedItems) => {
+    if (!user) {
+      navigate("/login", { state: { from: location } });
+      return;
+    }
+
+    if (!selectedItems.length) {
+      setError("Your cart is empty.");
+      return;
+    }
+
+    try {
+      setCheckoutPending(true);
+      setError("");
+      setMessage("");
+      const response = await apiRequest("/api/orders", {
+        method: "POST",
+        body: JSON.stringify({
+          items: selectedItems.map((item) => ({
+            productId: item._id || item.id,
+            quantity: item.quantity,
+          })),
+          deliveryDetails,
+        }),
+      });
+
+      setMessage(
+        selectedItems.length > 1
+          ? "Redirecting to Paystack checkout for all selected items..."
+          : "Redirecting to Paystack checkout...",
+      );
+      window.location.href = response.payment.authorization_url;
+    } catch (requestError) {
+      setError(requestError.message);
+    } finally {
+      setCheckoutPending(false);
+    }
+  };
 
   if (user?.role === "vendor") {
     return (
@@ -48,31 +95,6 @@ export const CartPage = () => {
       </div>
     );
   }
-
-  const checkoutItem = async (item) => {
-    if (!user) {
-      navigate("/login", { state: { from: location } });
-      return;
-    }
-
-    try {
-      setError("");
-      setMessage("");
-      const response = await apiRequest("/api/orders", {
-        method: "POST",
-        body: JSON.stringify({
-          productId: item._id || item.id,
-          quantity: item.quantity,
-          deliveryDetails,
-        }),
-      });
-
-      setMessage("Redirecting to Paystack checkout...");
-      window.location.href = response.payment.authorization_url;
-    } catch (requestError) {
-      setError(requestError.message);
-    }
-  };
 
   return (
     <div className="grid gap-6 lg:grid-cols-[1.2fr_0.8fr]">
@@ -153,7 +175,10 @@ export const CartPage = () => {
                     <div>
                       <p className="font-semibold">{item.name}</p>
                       <p className="text-sm text-staps-ink/60">
-                        NGN {Number(item.price).toLocaleString()}
+                        NGN {formatNaira(getProductActivePrice(item))}
+                      </p>
+                      <p className="text-xs text-staps-ink/50">
+                        Delivery fee: NGN {formatNaira(getProductDeliveryFee(item))}
                       </p>
                     </div>
                   </div>
@@ -171,12 +196,38 @@ export const CartPage = () => {
                       className="secondary-button"
                       type="button"
                       onClick={() => removeFromCart(item.id || item._id)}
+                      disabled={checkoutPending}
                     >
                       Remove
                     </button>
-                    <button className="primary-button" type="button" onClick={() => checkoutItem(item)}>
-                      Checkout
+                    <button
+                      className="primary-button"
+                      type="button"
+                      onClick={() => checkoutItems([item])}
+                      disabled={checkoutPending}
+                    >
+                      Checkout this item
                     </button>
+                  </div>
+                </div>
+                <div className="mt-4 grid gap-2 rounded-[1.35rem] bg-[#f8f9fd] px-4 py-3 text-sm text-staps-ink/68 sm:grid-cols-3">
+                  <div className="flex items-center justify-between gap-3 sm:block">
+                    <span>Items total</span>
+                    <span className="font-semibold text-staps-ink">
+                      NGN {formatNaira(getCartItemSubtotal(item))}
+                    </span>
+                  </div>
+                  <div className="flex items-center justify-between gap-3 sm:block">
+                    <span>Delivery</span>
+                    <span className="font-semibold text-staps-ink">
+                      NGN {formatNaira(getProductDeliveryFee(item))}
+                    </span>
+                  </div>
+                  <div className="flex items-center justify-between gap-3 sm:block">
+                    <span>Checkout total</span>
+                    <span className="font-semibold text-staps-ink">
+                      NGN {formatNaira(getCartItemTotal(item))}
+                    </span>
                   </div>
                 </div>
               </div>
@@ -196,7 +247,15 @@ export const CartPage = () => {
           </div>
           <div className="flex items-center justify-between">
             <span>Subtotal</span>
-            <span>NGN {subtotal.toLocaleString()}</span>
+            <span>NGN {formatNaira(subtotal)}</span>
+          </div>
+          <div className="flex items-center justify-between">
+            <span>Estimated delivery</span>
+            <span>NGN {formatNaira(deliveryTotal)}</span>
+          </div>
+          <div className="flex items-center justify-between border-t border-staps-ink/10 pt-3 font-semibold text-staps-ink">
+            <span>Total payable</span>
+            <span>NGN {formatNaira(grandTotal)}</span>
           </div>
         </div>
         <div className="mt-6 rounded-[1.5rem] bg-[#f8f9fd] p-4 text-sm text-staps-ink/70">
@@ -205,7 +264,18 @@ export const CartPage = () => {
           <p className="mt-1">{deliveryDetails.phone || "Phone number not set yet"}</p>
           <p className="mt-1">{deliveryDetails.location || "Location not set yet"}</p>
           <p className="mt-1">{deliveryDetails.address || "Address not set yet"}</p>
+          <p className="mt-3 text-xs uppercase tracking-[0.18em] text-[#6e54ef]">
+            One payment, separate vendor notifications
+          </p>
         </div>
+        <button
+          className="primary-button mt-6 w-full"
+          type="button"
+          onClick={() => checkoutItems(items)}
+          disabled={!items.length || checkoutPending}
+        >
+          {checkoutPending ? "Preparing checkout..." : `Checkout all items (${items.length})`}
+        </button>
         {(message || error) && (
           <p className={`mt-6 text-sm ${error ? "text-red-600" : "text-staps-orange"}`}>
             {error || message}

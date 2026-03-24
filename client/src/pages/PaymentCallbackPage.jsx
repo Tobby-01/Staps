@@ -1,12 +1,15 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
 
 import { apiRequest } from "../lib/api.js";
 import { useAuth } from "../state/AuthContext.jsx";
+import { useCart } from "../state/CartContext.jsx";
 
 export const PaymentCallbackPage = () => {
   const { refreshUser } = useAuth();
+  const { removeFromCart } = useCart();
   const [searchParams] = useSearchParams();
+  const hasVerifiedPayment = useRef(false);
   const [status, setStatus] = useState({
     title: "Checkout status",
     message: "Verifying payment...",
@@ -15,6 +18,10 @@ export const PaymentCallbackPage = () => {
   });
 
   useEffect(() => {
+    if (hasVerifiedPayment.current) {
+      return;
+    }
+
     const reference = searchParams.get("reference");
     if (!reference) {
       setStatus({
@@ -26,9 +33,25 @@ export const PaymentCallbackPage = () => {
       return;
     }
 
+    hasVerifiedPayment.current = true;
+
     apiRequest(`/api/payments/verify/${reference}`)
       .then(async (response) => {
         await refreshUser();
+
+        if (response.intent === "order_payment") {
+          const paidOrders = Array.isArray(response.orders)
+            ? response.orders
+            : response.order
+              ? [response.order]
+              : [];
+
+          paidOrders.forEach((order) => {
+            if (order?.product) {
+              removeFromCart(order.product);
+            }
+          });
+        }
 
         setStatus({
           title:
@@ -46,7 +69,7 @@ export const PaymentCallbackPage = () => {
           error: true,
         }),
       );
-  }, [refreshUser, searchParams]);
+  }, [refreshUser, removeFromCart, searchParams]);
 
   return (
     <div className="mx-auto max-w-2xl surface-card p-8">

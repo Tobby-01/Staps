@@ -1,5 +1,11 @@
 import mongoose from "mongoose";
 
+import {
+  DEFAULT_DELIVERY_FEE,
+  MAX_DELIVERY_FEE,
+  MIN_DELIVERY_FEE,
+} from "../constants/marketplace.js";
+
 const productSchema = new mongoose.Schema(
   {
     vendor: {
@@ -18,6 +24,12 @@ const productSchema = new mongoose.Schema(
       required: true,
       min: 0,
     },
+    deliveryFee: {
+      type: Number,
+      default: DEFAULT_DELIVERY_FEE,
+      min: MIN_DELIVERY_FEE,
+      max: MAX_DELIVERY_FEE,
+    },
     description: {
       type: String,
       required: true,
@@ -29,12 +41,7 @@ const productSchema = new mongoose.Schema(
       trim: true,
     },
     image: String,
-    imageId: String,
     images: {
-      type: [String],
-      default: [],
-    },
-    imageIds: {
       type: [String],
       default: [],
     },

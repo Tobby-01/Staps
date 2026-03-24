@@ -1,5 +1,10 @@
 import { createContext, useContext, useEffect, useState } from "react";
 
+import {
+  getCartItemSubtotal,
+  getProductDeliveryFee,
+} from "../lib/marketplace.js";
+
 const CartContext = createContext(null);
 
 const storageKey = "staps-cart";
@@ -18,6 +23,9 @@ const matchesItem = (left, right) => {
 
 export const CartProvider = ({ children }) => {
   const [items, setItems] = useState([]);
+  const subtotal = items.reduce((sum, item) => sum + getCartItemSubtotal(item), 0);
+  const deliveryTotal = items.reduce((sum, item) => sum + getProductDeliveryFee(item), 0);
+  const grandTotal = subtotal + deliveryTotal;
 
   useEffect(() => {
     const saved = localStorage.getItem(storageKey);
@@ -68,7 +76,9 @@ export const CartProvider = ({ children }) => {
   const value = {
     items,
     count: items.reduce((sum, item) => sum + item.quantity, 0),
-    subtotal: items.reduce((sum, item) => sum + item.price * item.quantity, 0),
+    subtotal,
+    deliveryTotal,
+    grandTotal,
     addToCart,
     removeFromCart,
     updateQuantity,

@@ -150,7 +150,7 @@ export const Navbar = ({ search, setSearch, requestSearchResults }) => {
   }, [showActivityIcons]);
 
   return (
-    <header className="sticky top-0 z-40 px-2.5 pt-2.5 sm:px-4 sm:pt-4">
+    <header className="z-40 px-2.5 pt-2.5 md:sticky md:top-0 sm:px-4 sm:pt-4">
       <div className="glass-navbar mobile-navbar-shell mx-auto max-w-7xl rounded-[1.7rem] px-4 py-3 md:grid md:grid-cols-[auto_minmax(0,1fr)_auto] md:items-center md:gap-5 md:rounded-[2rem] md:px-5 md:py-4">
         <div className="mobile-navbar-top flex items-center justify-between gap-3 md:justify-start md:gap-4">
           <Link

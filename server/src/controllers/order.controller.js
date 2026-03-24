@@ -1,4 +1,5 @@
 import { ORDER_STATUS } from "../constants/order.js";
+import { DEFAULT_DELIVERY_FEE } from "../constants/marketplace.js";
 import { ROLES } from "../constants/roles.js";
 import { Order } from "../models/order.model.js";
 import { Product } from "../models/product.model.js";
@@ -23,8 +24,28 @@ import { finalizePaystackPayment } from "../services/payment.service.js";
 
 const formatOrderNumber = (orderId = "") => `#${String(orderId).slice(-6).toUpperCase()}`;
 
-export const initializeOrderPayment = asyncHandler(async (req, res) => {
-  const { productId, quantity = 1, deliveryDetails = {} } = req.body;
+const normalizeCheckoutItems = (payload = {}) => {
+  const requestedItems = Array.isArray(payload.items) && payload.items.length
+    ? payload.items
+    : payload.productId
+      ? [{ productId: payload.productId, quantity: payload.quantity }]
+      : [];
+
+  return requestedItems.map((item) => {
+    const productId = String(item?.productId || item?.id || "").trim();
+    const quantityValue = Number(item?.quantity);
+    const quantity =
+      Number.isFinite(quantityValue) && quantityValue > 0 ? Math.round(quantityValue) : 1;
+
+    if (!productId) {
+      throw new ApiError(400, "Each checkout item must include a product.");
+    }
+
+    return { productId, quantity };
+  });
+};
+
+const normalizeDeliveryDetails = (deliveryDetails = {}) => {
   const recipientName = deliveryDetails.recipientName?.trim();
   const phone = deliveryDetails.phone?.trim();
   const location = deliveryDetails.location?.trim();
@@ -38,80 +59,143 @@ export const initializeOrderPayment = asyncHandler(async (req, res) => {
     );
   }
 
-  const product = await Product.findById(productId);
+  return {
+    recipientName,
+    phone,
+    location,
+    address,
+    ...(notes ? { notes } : {}),
+  };
+};
 
-  if (!product || !product.isActive) {
-    throw new ApiError(404, "Product not found.");
+const getCheckoutUnitPrice = (product) =>
+  product.isFlashSale && product.discountPrice && product.flashSaleEndTime > new Date()
+    ? product.discountPrice
+    : product.price;
+
+const getProductDeliveryFee = (product) => {
+  const deliveryFee = Number(product?.deliveryFee);
+  return Number.isFinite(deliveryFee) ? Math.round(deliveryFee) : DEFAULT_DELIVERY_FEE;
+};
+
+export const initializeOrderPayment = asyncHandler(async (req, res) => {
+  const checkoutItems = normalizeCheckoutItems(req.body);
+  if (!checkoutItems.length) {
+    throw new ApiError(400, "Select at least one product to checkout.");
   }
 
-  const vendorProfile = await Vendor.findOne({ user: product.vendor, verified: true });
-  if (!vendorProfile) {
-    throw new ApiError(400, "This vendor is not verified to receive orders.");
+  const deliveryDetails = normalizeDeliveryDetails(req.body.deliveryDetails);
+  const uniqueProductIds = [...new Set(checkoutItems.map((item) => item.productId))];
+  const products = await Product.find({
+    _id: { $in: uniqueProductIds },
+    isActive: true,
+  });
+
+  if (products.length !== uniqueProductIds.length) {
+    throw new ApiError(404, "One or more selected products are no longer available.");
   }
 
-  const unitPrice =
-    product.isFlashSale && product.discountPrice && product.flashSaleEndTime > new Date()
-      ? product.discountPrice
-      : product.price;
-  const totalAmount = unitPrice * Number(quantity);
+  const productMap = new Map(products.map((product) => [product.id, product]));
+  const vendorIds = [...new Set(products.map((product) => product.vendor.toString()))];
+  const verifiedVendors = await Vendor.find({
+    user: { $in: vendorIds },
+    verified: true,
+  }).select("user");
 
-  const order = await Order.create({
-    user: req.user.id,
-    vendor: product.vendor,
-    product: product.id,
-    quantity: Number(quantity),
-    totalAmount,
-    deliveryDetails: {
-      recipientName,
-      phone,
-      location,
-      address,
-      ...(notes ? { notes } : {}),
-    },
-    cancelableUntil: computeCancelableUntil(),
+  if (verifiedVendors.length !== vendorIds.length) {
+    throw new ApiError(400, "One or more vendors are not verified to receive orders.");
+  }
+
+  const ordersPayload = checkoutItems.map((item) => {
+    const product = productMap.get(item.productId);
+    if (!product) {
+      throw new ApiError(404, "One or more selected products are no longer available.");
+    }
+
+    const unitPrice = getCheckoutUnitPrice(product);
+    const deliveryFee = getProductDeliveryFee(product);
+    const totalAmount = unitPrice * item.quantity + deliveryFee;
+
+    return {
+      user: req.user.id,
+      vendor: product.vendor,
+      product: product.id,
+      quantity: item.quantity,
+      totalAmount,
+      deliveryFee,
+      deliveryDetails,
+      cancelableUntil: computeCancelableUntil(),
+    };
   });
 
-  const transaction = await initializeTransaction({
-    email: req.user.email,
-    amount: totalAmount * 100,
-    metadata: {
-      type: "order_payment",
-      orderId: order.id,
-      productId: product.id,
-      shopperId: req.user.id,
-      vendorId: product.vendor.toString(),
-      deliveryLocation: location,
-    },
-  });
+  let orders = await Order.create(ordersPayload);
+  let transaction;
 
-  order.paystackReference = transaction.reference;
-  await order.save();
+  try {
+    transaction = await initializeTransaction({
+      email: req.user.email,
+      amount: Math.round(orders.reduce((sum, order) => sum + Number(order.totalAmount || 0), 0) * 100),
+      metadata: {
+        type: "order_payment",
+        orderId: orders[0]?.id,
+        orderIds: orders.map((order) => order.id),
+        productIds: orders.map((order) => order.product.toString()),
+        shopperId: req.user.id,
+        vendorIds,
+        deliveryLocation: deliveryDetails.location,
+        itemCount: orders.length,
+      },
+    });
+
+    await Order.updateMany(
+      { _id: { $in: orders.map((order) => order._id) } },
+      { $set: { paystackReference: transaction.reference } },
+    );
+
+    orders = orders.map((order) => {
+      order.paystackReference = transaction.reference;
+      return order;
+    });
+  } catch (error) {
+    await Order.deleteMany({
+      _id: { $in: orders.map((order) => order._id) },
+      isPaid: false,
+    });
+
+    throw error;
+  }
 
   res.status(201).json({
     success: true,
-    message: "Order created. Continue with payment.",
-    order,
+    message:
+      orders.length > 1
+        ? "Orders created. Continue with payment to confirm all selected items."
+        : "Order created. Continue with payment.",
+    order: orders[0],
+    orders,
     payment: transaction,
   });
 });
 
 export const verifyOrderPayment = asyncHandler(async (req, res) => {
   const { reference } = req.params;
-  const order = await Order.findOne({ paystackReference: reference });
+  const orders = await Order.find({ paystackReference: reference });
 
-  if (!order) {
+  if (!orders.length) {
     throw new ApiError(404, "Order not found for this payment reference.");
   }
 
-  if (String(order.user) !== req.user.id && req.user.role !== ROLES.ADMIN) {
+  const belongsToCurrentUser = orders.every((order) => String(order.user) === req.user.id);
+  if (!belongsToCurrentUser && req.user.role !== ROLES.ADMIN) {
     throw new ApiError(403, "You cannot verify this payment.");
   }
 
-  if (order.isPaid) {
+  if (orders.every((order) => order.isPaid)) {
     return res.json({
       success: true,
       message: "Payment already verified.",
-      order,
+      order: orders[0],
+      orders,
     });
   }
 
@@ -124,6 +208,7 @@ export const verifyOrderPayment = asyncHandler(async (req, res) => {
     success: true,
     message: result.message,
     order: result.order,
+    orders: result.orders,
   });
 });
 
@@ -131,16 +216,16 @@ export const listMyOrders = asyncHandler(async (req, res) => {
   const filter =
     req.user.role === ROLES.VENDOR ? { vendor: req.user.id } : { user: req.user.id };
 
-  const pendingOrders = await Order.find({
+  const pendingReferences = await Order.distinct("paystackReference", {
     ...filter,
     status: ORDER_STATUS.PENDING,
     isPaid: false,
     paystackReference: { $exists: true, $ne: null },
-  }).select("paystackReference");
+  });
 
-  for (const pendingOrder of pendingOrders) {
+  for (const reference of pendingReferences.filter(Boolean)) {
     try {
-      await finalizePaystackPayment(pendingOrder.paystackReference);
+      await finalizePaystackPayment(reference);
     } catch (_error) {
       // Keep the order pending if payment is not yet successful or verification fails.
     }
@@ -148,7 +233,7 @@ export const listMyOrders = asyncHandler(async (req, res) => {
 
   const orders = await Order.find(filter)
     .sort({ createdAt: -1 })
-    .populate("product", "name image images price")
+    .populate("product", "name image images price deliveryFee")
     .populate("user", "name email")
     .populate("vendor", "name email");
 

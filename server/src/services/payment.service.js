@@ -9,20 +9,41 @@ import { verifyTransaction } from "./paystack.service.js";
 
 const formatOrderNumber = (orderId = "") => `#${String(orderId).slice(-6).toUpperCase()}`;
 
-const finalizeOrderPayment = async ({ payment, reference }) => {
-  const order =
-    (await Order.findOne({ paystackReference: reference })) ||
-    (payment.metadata?.orderId ? await Order.findById(payment.metadata.orderId) : null);
+const getMetadataOrderIds = (metadata = {}) =>
+  [
+    metadata.orderId,
+    ...(Array.isArray(metadata.orderIds) ? metadata.orderIds : []),
+  ]
+    .filter(Boolean)
+    .map(String);
 
-  if (!order) {
+const resolveOrdersForPayment = async ({ payment, reference }) => {
+  const ordersByReference = await Order.find({ paystackReference: reference });
+  if (ordersByReference.length) {
+    return ordersByReference;
+  }
+
+  const metadataOrderIds = [...new Set(getMetadataOrderIds(payment.metadata))];
+  if (!metadataOrderIds.length) {
+    return [];
+  }
+
+  return Order.find({ _id: { $in: metadataOrderIds } });
+};
+
+const finalizeOrderPayment = async ({ payment, reference }) => {
+  const orders = await resolveOrdersForPayment({ payment, reference });
+
+  if (!orders.length) {
     throw new ApiError(404, "Order not found for this payment reference.");
   }
 
-  if (order.isPaid) {
+  if (orders.every((order) => order.isPaid)) {
     return {
       intent: "order_payment",
       message: "Payment already verified.",
-      order,
+      order: orders[0],
+      orders,
       payment,
     };
   }
@@ -31,50 +52,62 @@ const finalizeOrderPayment = async ({ payment, reference }) => {
     throw new ApiError(400, "Payment is not successful yet.");
   }
 
-  order.isPaid = true;
-  order.status = ORDER_STATUS.PAID;
-  order.paidAt = order.paidAt || new Date();
-  order.paystackReference = reference;
-  order.paymentChannel = payment.channel || order.paymentChannel;
-  await order.save();
+  const updatedOrders = [];
 
-  await createNotification({
-    recipient: order.vendor,
-    type: "payment_confirmed",
-    title: "Payment confirmed",
-    message: "A shopper has paid for a new order.",
-    metadata: { orderId: order.id, orderNumber: formatOrderNumber(order.id) },
-  });
+  for (const order of orders) {
+    if (!order.isPaid) {
+      order.isPaid = true;
+      order.status = ORDER_STATUS.PAID;
+      order.paidAt = order.paidAt || new Date();
+      order.paystackReference = reference;
+      order.paymentChannel = payment.channel || order.paymentChannel;
+      await order.save();
 
-  try {
-    const populatedOrder = await Order.findById(order.id)
-      .populate("product", "name image images")
-      .populate("user", "name email")
-      .populate("vendor", "name email");
-
-    if (populatedOrder?.vendor?.email) {
-      await sendVendorNewOrderEmail({
-        to: populatedOrder.vendor.email,
-        vendorName: populatedOrder.vendor.name,
-        shopperName: populatedOrder.user?.name || "A shopper",
-        productName: populatedOrder.product?.name || "New order",
-        productImage:
-          populatedOrder.product?.image || populatedOrder.product?.images?.[0] || "",
-        amountPaid: populatedOrder.totalAmount,
-        quantity: populatedOrder.quantity,
-        deliveryDetails: populatedOrder.deliveryDetails,
-        orderId: populatedOrder.id,
+      await createNotification({
+        recipient: order.vendor,
+        type: "payment_confirmed",
+        title: "Payment confirmed",
+        message: "A shopper has paid for a new order.",
+        metadata: { orderId: order.id, orderNumber: formatOrderNumber(order.id) },
       });
+
+      try {
+        const populatedOrder = await Order.findById(order.id)
+          .populate("product", "name image images")
+          .populate("user", "name email")
+          .populate("vendor", "name email");
+
+        if (populatedOrder?.vendor?.email) {
+          await sendVendorNewOrderEmail({
+            to: populatedOrder.vendor.email,
+            vendorName: populatedOrder.vendor.name,
+            shopperName: populatedOrder.user?.name || "A shopper",
+            productName: populatedOrder.product?.name || "New order",
+            productImage:
+              populatedOrder.product?.image || populatedOrder.product?.images?.[0] || "",
+            amountPaid: populatedOrder.totalAmount,
+            quantity: populatedOrder.quantity,
+            deliveryDetails: populatedOrder.deliveryDetails,
+            orderId: populatedOrder.id,
+          });
+        }
+      } catch (error) {
+        console.error("Failed to send vendor order email");
+        console.error(error);
+      }
     }
-  } catch (error) {
-    console.error("Failed to send vendor order email");
-    console.error(error);
+
+    updatedOrders.push(order);
   }
 
   return {
     intent: "order_payment",
-    message: "Payment verified successfully. Your order is now in the vendor queue.",
-    order,
+    message:
+      updatedOrders.length > 1
+        ? "Payment verified successfully. Your orders are now in the vendor queues."
+        : "Payment verified successfully. Your order is now in the vendor queue.",
+    order: updatedOrders[0],
+    orders: updatedOrders,
     payment,
   };
 };

@@ -1,14 +1,14 @@
 import { Follow } from "../models/follow.model.js";
 import { Product } from "../models/product.model.js";
 import { Vendor } from "../models/vendor.model.js";
+import {
+  DEFAULT_DELIVERY_FEE,
+  MAX_DELIVERY_FEE,
+  MIN_DELIVERY_FEE,
+} from "../constants/marketplace.js";
 import { ApiError } from "../utils/api-error.js";
 import { asyncHandler } from "../utils/async-handler.js";
 
-import {
-  deleteImageFromCloudflare,
-  hasCloudflareImagesConfig,
-  uploadImagesToCloudflare,
-} from "../services/cloudflare-images.service.js";
 import { createBulkNotifications } from "../services/notification.service.js";
 
 const attachVendorMetadata = async (products) => {
@@ -81,6 +81,26 @@ const ensureVendorVerified = async (userId) => {
   }
 };
 
+const parseDeliveryFeeInput = (value, { fallback = DEFAULT_DELIVERY_FEE } = {}) => {
+  if (value === undefined || value === null || value === "") {
+    return fallback;
+  }
+
+  const parsedValue = Number(value);
+  if (!Number.isFinite(parsedValue)) {
+    throw new ApiError(400, "Delivery fee must be a valid number.");
+  }
+
+  if (parsedValue < MIN_DELIVERY_FEE || parsedValue > MAX_DELIVERY_FEE) {
+    throw new ApiError(
+      400,
+      `Delivery fee must be between NGN ${MIN_DELIVERY_FEE} and NGN ${MAX_DELIVERY_FEE}.`,
+    );
+  }
+
+  return Math.round(parsedValue);
+};
+
 export const listProducts = asyncHandler(async (req, res) => {
   const query = { isActive: true };
   const searchTerm = String(req.query.search || "").trim();
@@ -126,34 +146,22 @@ export const getProduct = asyncHandler(async (req, res) => {
 export const createProduct = asyncHandler(async (req, res) => {
   await ensureVendorVerified(req.user.id);
 
-  const { name, price, description, category, isFlashSale, discountPrice, flashSaleEndTime } = req.body;
-  if (!name || !price || !description || !category) {
+  const { name, price, deliveryFee, description, category, isFlashSale, discountPrice, flashSaleEndTime } = req.body;
+  if (!name || price === undefined || price === null || price === "" || !description || !category) {
     throw new ApiError(400, "Name, price, description, and category are required.");
   }
 
-  const uploadedImages = req.files?.length && hasCloudflareImagesConfig()
-    ? await uploadImagesToCloudflare(req.files, (_file, index) => ({
-        type: "product",
-        vendorId: req.user.id,
-        slot: index,
-        name,
-      }))
-    : [];
-  const imagePaths = uploadedImages.length
-    ? uploadedImages.map((image) => image.url)
-    : (req.files || []).map((file) => `/uploads/products/${file.filename}`);
-  const imageIds = uploadedImages.map((image) => image.id);
+  const imagePaths = (req.files || []).map((file) => `/uploads/products/${file.filename}`);
 
   const product = await Product.create({
     vendor: req.user.id,
     name,
     price: Number(price),
+    deliveryFee: parseDeliveryFeeInput(deliveryFee),
     description,
     category,
     image: imagePaths[0],
-    imageId: imageIds[0],
     images: imagePaths,
-    imageIds,
     isFlashSale: isFlashSale === "true" || isFlashSale === true,
     discountPrice: discountPrice ? Number(discountPrice) : undefined,
     flashSaleEndTime: flashSaleEndTime || undefined,
@@ -193,6 +201,12 @@ export const updateProduct = asyncHandler(async (req, res) => {
     product.price = Number(req.body.price);
   }
 
+  if (req.body.deliveryFee !== undefined) {
+    product.deliveryFee = parseDeliveryFeeInput(req.body.deliveryFee, {
+      fallback: product.deliveryFee ?? DEFAULT_DELIVERY_FEE,
+    });
+  }
+
   if (req.body.description !== undefined) {
     product.description = req.body.description;
   }
@@ -214,33 +228,9 @@ export const updateProduct = asyncHandler(async (req, res) => {
   }
 
   if (req.files?.length) {
-    const uploadedImages = hasCloudflareImagesConfig()
-      ? await uploadImagesToCloudflare(req.files, (_file, index) => ({
-          type: "product",
-          vendorId: req.user.id,
-          productId: product.id,
-          slot: index,
-          name: product.name,
-        }))
-      : [];
-    const imagePaths = uploadedImages.length
-      ? uploadedImages.map((image) => image.url)
-      : req.files.map((file) => `/uploads/products/${file.filename}`);
-    const imageIds = uploadedImages.map((image) => image.id);
-    const previousImageIds = [...(product.imageIds || [])];
-
+    const imagePaths = req.files.map((file) => `/uploads/products/${file.filename}`);
     product.image = imagePaths[0];
-    product.imageId = imageIds[0];
     product.images = imagePaths;
-    product.imageIds = imageIds;
-
-    if (imageIds.length) {
-      await Promise.all(
-        previousImageIds
-          .filter((imageId) => imageId && !imageIds.includes(imageId))
-          .map((imageId) => deleteImageFromCloudflare(imageId).catch(() => {})),
-      );
-    }
   }
 
   await product.save();

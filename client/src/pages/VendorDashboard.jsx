@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 
 import { apiRequest, resolveAssetUrl } from "../lib/api.js";
+import { formatNaira } from "../lib/marketplace.js";
 
 const productCategories = [
   "Fashion",
@@ -21,6 +22,7 @@ const dashboardRefreshIntervalMs = 5000;
 const initialProduct = {
   name: "",
   price: "",
+  deliveryFee: "200",
   description: "",
   category: productCategories[0],
   isFlashSale: false,
@@ -171,6 +173,7 @@ export const VendorDashboard = () => {
     const formData = new FormData();
     formData.append("name", form.name);
     formData.append("price", form.price);
+    formData.append("deliveryFee", form.deliveryFee);
     formData.append("description", form.description);
     formData.append("category", form.category);
     formData.append("isFlashSale", String(form.isFlashSale));
@@ -248,6 +251,7 @@ export const VendorDashboard = () => {
     setEditForm({
       name: product.name || "",
       price: String(product.price || ""),
+      deliveryFee: String(product.deliveryFee ?? 200),
       description: product.description || "",
       category: product.category || productCategories[0],
       isFlashSale: Boolean(product.isFlashSale),
@@ -271,6 +275,7 @@ export const VendorDashboard = () => {
     const formData = new FormData();
     formData.append("name", editForm.name);
     formData.append("price", editForm.price);
+    formData.append("deliveryFee", editForm.deliveryFee);
     formData.append("description", editForm.description);
     formData.append("category", editForm.category);
     formData.append("isFlashSale", String(editForm.isFlashSale));
@@ -368,6 +373,22 @@ export const VendorDashboard = () => {
                 value={form.price}
                 onChange={(event) => setForm((current) => ({ ...current, price: event.target.value }))}
               />
+              <input
+                className="field"
+                type="number"
+                min="200"
+                max="700"
+                placeholder="Delivery fee"
+                value={form.deliveryFee}
+                onChange={(event) =>
+                  setForm((current) => ({ ...current, deliveryFee: event.target.value }))
+                }
+              />
+            </div>
+            <p className="-mt-1 text-xs font-medium uppercase tracking-[0.16em] text-staps-ink/45">
+              Delivery fee must stay between NGN 200 and NGN 700.
+            </p>
+            <div className="grid gap-4 md:grid-cols-1">
               <select
                 className="field"
                 value={form.category}
@@ -781,7 +802,10 @@ export const VendorDashboard = () => {
                         </span>
                       </div>
                       <p className="mt-2 text-sm font-semibold text-staps-ink">
-                        NGN {Number(product.price).toLocaleString()}
+                        NGN {formatNaira(product.price)}
+                      </p>
+                      <p className="mt-1 text-xs font-semibold uppercase tracking-[0.14em] text-staps-ink/45">
+                        Delivery fee NGN {formatNaira(product.deliveryFee ?? 200)}
                       </p>
                       <p className="mt-2 text-xs text-staps-ink/55">
                         {product.images?.length || (product.image ? 1 : 0)} image(s) uploaded
@@ -830,6 +854,25 @@ export const VendorDashboard = () => {
                                 setEditForm((current) => ({ ...current, price: event.target.value }))
                               }
                             />
+                            <input
+                              className="field"
+                              type="number"
+                              min="200"
+                              max="700"
+                              placeholder="Delivery fee"
+                              value={editForm.deliveryFee}
+                              onChange={(event) =>
+                                setEditForm((current) => ({
+                                  ...current,
+                                  deliveryFee: event.target.value,
+                                }))
+                              }
+                            />
+                          </div>
+                          <p className="text-xs font-semibold uppercase tracking-[0.14em] text-staps-ink/45">
+                            Delivery fee range: NGN 200 to NGN 700
+                          </p>
+                          <div className="grid gap-3 md:grid-cols-1">
                             <select
                               className="field"
                               value={editForm.category}

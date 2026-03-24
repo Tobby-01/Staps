@@ -2,6 +2,7 @@ import { Link } from "react-router-dom";
 
 import { resolveAssetUrl } from "../lib/api.js";
 import { VerifiedVendorBadge } from "../components/VerifiedVendorBadge.jsx";
+import { formatNaira, getProductActivePrice, getProductDeliveryFee } from "../lib/marketplace.js";
 import { useAuth } from "../state/AuthContext.jsx";
 import { useFavorites } from "../state/FavoritesContext.jsx";
 
@@ -69,7 +70,10 @@ export const FavoritesPage = () => {
                   ) : null}
                   <p className="text-sm text-staps-ink/60">{product.category || "Campus picks"}</p>
                   <p className="text-lg font-extrabold text-[#5a49d6]">
-                    NGN {Number(product.discountPrice || product.price || 0).toLocaleString()}
+                    NGN {formatNaira(getProductActivePrice(product))}
+                  </p>
+                  <p className="text-xs font-semibold uppercase tracking-[0.14em] text-staps-ink/45">
+                    Delivery from NGN {formatNaira(getProductDeliveryFee(product))}
                   </p>
                   <Link to="/cart" className="inline-flex rounded-full bg-[#6e54ef] px-5 py-3 text-sm font-semibold text-white transition hover:bg-[#5a49d6]">
                     View cart

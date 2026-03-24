@@ -3,6 +3,12 @@ import { HeartIcon as HeartSolidIcon } from "@heroicons/react/24/solid";
 import { Link } from "react-router-dom";
 
 import { resolveAssetUrl } from "../lib/api.js";
+import {
+  formatNaira,
+  getProductActivePrice,
+  getProductBasePrice,
+  getProductDeliveryFee,
+} from "../lib/marketplace.js";
 import { useAuth } from "../state/AuthContext.jsx";
 import { useCart } from "../state/CartContext.jsx";
 import { useFavorites } from "../state/FavoritesContext.jsx";
@@ -15,12 +21,9 @@ export const ProductCard = ({ product, featured = false }) => {
   const isVendorAccount = user?.role === "vendor";
   const previewImage = resolveAssetUrl(product.image || product.images?.[0]);
   const favorite = isFavorite(product);
-  const currentPrice =
-    product.isFlashSale && product.discountPrice && new Date(product.flashSaleEndTime) > new Date()
-      ? product.discountPrice
-      : product.price;
-  const basePrice = Number(product.price || 0);
-  const activePrice = Number(currentPrice || basePrice);
+  const basePrice = getProductBasePrice(product);
+  const activePrice = getProductActivePrice(product);
+  const deliveryFee = getProductDeliveryFee(product);
   const hasDiscount = Number.isFinite(basePrice) && Number.isFinite(activePrice) && activePrice < basePrice;
   const discountPercent =
     hasDiscount && basePrice > 0 ? Math.round(((basePrice - activePrice) / basePrice) * 100) : 0;
@@ -107,13 +110,16 @@ export const ProductCard = ({ product, featured = false }) => {
 
         <div className="space-y-1.5">
           <p className="text-[1.15rem] font-extrabold leading-none text-staps-ink">
-            NGN {activePrice.toLocaleString()}
+            NGN {formatNaira(activePrice)}
           </p>
           {hasDiscount ? (
-            <p className="text-[0.78rem] text-staps-ink/38 line-through">NGN {basePrice.toLocaleString()}</p>
+            <p className="text-[0.78rem] text-staps-ink/38 line-through">NGN {formatNaira(basePrice)}</p>
           ) : (
             <div className="h-4" />
           )}
+          <p className="text-[0.72rem] font-medium uppercase tracking-[0.14em] text-staps-ink/42">
+            Delivery from NGN {formatNaira(deliveryFee)}
+          </p>
         </div>
 
         {isVendorAccount ? (
@@ -181,13 +187,16 @@ export const ProductCard = ({ product, featured = false }) => {
                   featured ? "text-white" : "text-staps-ink"
                 }`}
               >
-                NGN {activePrice.toLocaleString()}
+                NGN {formatNaira(activePrice)}
               </div>
               {hasDiscount ? (
                 <p className={`text-sm line-through ${featured ? "text-white/65" : "text-staps-ink/45"}`}>
-                  NGN {basePrice.toLocaleString()}
+                  NGN {formatNaira(basePrice)}
                 </p>
               ) : null}
+              <p className={`text-xs font-semibold uppercase tracking-[0.16em] ${featured ? "text-white/72" : "text-staps-ink/45"}`}>
+                Delivery from NGN {formatNaira(deliveryFee)}
+              </p>
             </div>
           </div>
 

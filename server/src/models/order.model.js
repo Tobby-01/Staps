@@ -1,6 +1,7 @@
 import mongoose from "mongoose";
 
 import { ORDER_STATUS } from "../constants/order.js";
+import { DEFAULT_DELIVERY_FEE, MAX_DELIVERY_FEE } from "../constants/marketplace.js";
 
 const orderSchema = new mongoose.Schema(
   {
@@ -30,6 +31,12 @@ const orderSchema = new mongoose.Schema(
       type: Number,
       required: true,
       min: 0,
+    },
+    deliveryFee: {
+      type: Number,
+      default: DEFAULT_DELIVERY_FEE,
+      min: 0,
+      max: MAX_DELIVERY_FEE,
     },
     deliveryDetails: {
       recipientName: {
