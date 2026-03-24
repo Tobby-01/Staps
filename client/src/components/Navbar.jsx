@@ -168,7 +168,7 @@ export const Navbar = ({ search, setSearch, requestSearchResults }) => {
               <>
                 <Link
                   to={messagesPath}
-                  className="glass-icon-button glass-mobile-toolbar-button relative inline-flex h-11 w-11 items-center justify-center text-staps-ink"
+                  className="glass-icon-plain relative inline-flex h-11 w-11 items-center justify-center text-staps-ink"
                   aria-label="Open messages"
                   title="Messages"
                 >
@@ -181,7 +181,7 @@ export const Navbar = ({ search, setSearch, requestSearchResults }) => {
                 </Link>
                 <Link
                   to={notificationsPath}
-                  className="glass-icon-button glass-mobile-toolbar-button relative inline-flex h-11 w-11 items-center justify-center text-staps-ink"
+                  className="glass-icon-plain relative inline-flex h-11 w-11 items-center justify-center text-staps-ink"
                   aria-label="Open notifications"
                   title="Notifications"
                 >
@@ -238,7 +238,7 @@ export const Navbar = ({ search, setSearch, requestSearchResults }) => {
           <Link
             to="/"
             aria-label="Go home"
-            className="glass-icon-button hidden h-11 w-11 shrink-0 items-center justify-center text-staps-ink md:inline-flex"
+            className="glass-icon-plain hidden h-11 w-11 shrink-0 items-center justify-center text-staps-ink md:inline-flex"
             title="Home"
           >
             <svg
@@ -262,7 +262,7 @@ export const Navbar = ({ search, setSearch, requestSearchResults }) => {
             <>
               <Link
                 to={messagesPath}
-                className="glass-icon-button relative inline-flex h-11 w-11 items-center justify-center text-staps-ink"
+                className="glass-icon-plain relative inline-flex h-11 w-11 items-center justify-center text-staps-ink"
                 aria-label="Open messages"
                 title="Messages"
               >
@@ -275,7 +275,7 @@ export const Navbar = ({ search, setSearch, requestSearchResults }) => {
               </Link>
               <Link
                 to={notificationsPath}
-                className="glass-icon-button relative inline-flex h-11 w-11 items-center justify-center text-staps-ink"
+                className="glass-icon-plain relative inline-flex h-11 w-11 items-center justify-center text-staps-ink"
                 aria-label="Open notifications"
                 title="Notifications"
               >
@@ -349,7 +349,7 @@ export const Navbar = ({ search, setSearch, requestSearchResults }) => {
               <Link
                 to="/"
                 aria-label="Go home"
-                className="glass-icon-button inline-flex h-11 w-11 shrink-0 items-center justify-center text-staps-ink"
+                className="glass-icon-plain inline-flex h-11 w-11 shrink-0 items-center justify-center text-staps-ink"
                 onClick={closeMobileMenu}
               >
                 <svg

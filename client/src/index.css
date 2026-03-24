@@ -187,6 +187,20 @@
       linear-gradient(140deg, rgba(149, 175, 255, 0.12), rgba(255, 255, 255, 0.06));
   }
 
+  .glass-icon-plain {
+    border: 1px solid transparent;
+    background: transparent;
+    box-shadow: none;
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
+    transition: transform 200ms ease, color 200ms ease, opacity 200ms ease;
+  }
+
+  .glass-icon-plain:hover {
+    transform: translateY(-1px);
+    opacity: 0.9;
+  }
+
   .glass-mobile-sheet {
     border-top: 1px solid rgba(255, 255, 255, 0.34);
   }
