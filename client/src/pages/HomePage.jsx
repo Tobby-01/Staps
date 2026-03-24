@@ -1,9 +1,12 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
+  ArrowTrendingUpIcon,
+  ArrowUpRightIcon,
   BellIcon,
   BoltIcon,
   CheckBadgeIcon,
   ShieldCheckIcon,
+  SparklesIcon,
 } from "@heroicons/react/24/outline";
 import { Link, NavLink, useOutletContext } from "react-router-dom";
 
@@ -42,12 +45,12 @@ const marketplaceFeatures = [
 ];
 
 export const HomePage = () => {
-  const { search } = useOutletContext();
+  const { search, searchRequestToken } = useOutletContext();
   const [products, setProducts] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [selectedVendorIds, setSelectedVendorIds] = useState([]);
-  const [deliveryOption, setDeliveryOption] = useState("Standard");
+  const lastSearchScrollTokenRef = useRef(0);
 
   useEffect(() => {
     const loadProducts = async () => {
@@ -168,6 +171,29 @@ export const HomePage = () => {
     );
   };
 
+  useEffect(() => {
+    if (!searchRequestToken || searchRequestToken <= lastSearchScrollTokenRef.current || loading) {
+      return;
+    }
+
+    lastSearchScrollTokenRef.current = searchRequestToken;
+
+    let timeoutId = 0;
+    const frameId = window.requestAnimationFrame(() => {
+      timeoutId = window.setTimeout(() => {
+        document.getElementById("home-results-section")?.scrollIntoView({
+          behavior: "smooth",
+          block: "start",
+        });
+      }, 0);
+    });
+
+    return () => {
+      window.cancelAnimationFrame(frameId);
+      window.clearTimeout(timeoutId);
+    };
+  }, [error, loading, searchRequestToken]);
+
   return (
     <div className="space-y-4 pb-6 md:space-y-6 md:pb-10">
       <section className="surface-card overflow-hidden p-3.5 sm:p-4 md:p-6">
@@ -245,63 +271,78 @@ export const HomePage = () => {
               </div>
             </section>
 
-            {loading ? (
-              <div className="surface-card p-4 md:p-6">Loading shopper marketplace...</div>
-            ) : error ? (
-              <div className="surface-card p-4 md:p-6">
-                <p className="text-red-600">{error}</p>
-                {error === apiUnavailableMessage && (
-                  <p className="mt-2 text-sm text-staps-ink/65">
-                    The frontend is running, but the backend API is not available yet.
-                  </p>
-                )}
-              </div>
-            ) : (
-              <div
-                id="marketplace-grid"
-                className="grid grid-cols-2 gap-3 md:grid-cols-2 md:gap-4 xl:grid-cols-3 xl:gap-5"
-              >
-                {featuredProduct && <ProductCard product={featuredProduct} featured />}
-                {gridProducts.slice(0, 5).map((product) => (
-                  <ProductCard key={product._id || product.id} product={product} />
-                ))}
-              </div>
-            )}
+            <div id="home-results-section" className="scroll-mt-28">
+              {loading ? (
+                <div className="surface-card p-4 md:p-6">Loading shopper marketplace...</div>
+              ) : error ? (
+                <div className="surface-card p-4 md:p-6">
+                  <p className="text-red-600">{error}</p>
+                  {error === apiUnavailableMessage && (
+                    <p className="mt-2 text-sm text-staps-ink/65">
+                      The frontend is running, but the backend API is not available yet.
+                    </p>
+                  )}
+                </div>
+              ) : (
+                <div
+                  id="marketplace-grid"
+                  className="grid grid-cols-2 gap-3 md:grid-cols-2 md:gap-4 xl:grid-cols-3 xl:gap-5"
+                >
+                  {featuredProduct && <ProductCard product={featuredProduct} featured />}
+                  {gridProducts.slice(0, 5).map((product) => (
+                    <ProductCard key={product._id || product.id} product={product} />
+                  ))}
+                </div>
+              )}
 
-            {!loading && !error && !filteredProducts.length && (
-              <div className="surface-card p-4 text-staps-ink/70 md:p-6">
-                No uploaded vendor products match this current home filter yet.
-              </div>
-            )}
+              {!loading && !error && !filteredProducts.length && (
+                <div className="surface-card p-4 text-staps-ink/70 md:p-6">
+                  No uploaded vendor products match this current home filter yet.
+                </div>
+              )}
+            </div>
           </div>
 
           <aside className="order-2 space-y-3.5 xl:order-1 xl:space-y-4">
-            <div className="rounded-[1.5rem] bg-[#f8f9fd] p-4 md:rounded-[1.75rem] md:p-5">
-              <div className="flex items-start justify-between gap-3">
-                <div>
-                  <p className="font-display text-[1.45rem] font-bold leading-none md:text-[2rem]">
+            <div className="relative overflow-hidden rounded-[1.6rem] border border-white/40 bg-[linear-gradient(145deg,#14213f_0%,#3f3f9d_48%,#79a4ff_100%)] p-5 text-white shadow-[0_28px_65px_rgba(39,48,99,0.32)] md:rounded-[1.9rem] md:p-6">
+              <div className="absolute -right-10 top-0 h-36 w-36 rounded-full bg-white/14 blur-3xl" />
+              <div className="absolute -left-8 bottom-0 h-28 w-28 rounded-full bg-[#7de5d0]/20 blur-3xl" />
+              <div className="relative flex items-start justify-between gap-3">
+                <div className="max-w-[14rem]">
+                  <span className="inline-flex items-center gap-2 rounded-full border border-white/18 bg-white/12 px-3 py-1.5 text-[0.68rem] font-bold uppercase tracking-[0.18em] text-white/84 backdrop-blur">
+                    <ArrowTrendingUpIcon className="h-3.5 w-3.5" />
+                    Market intel
+                  </span>
+                  <p className="mt-4 font-display text-[1.5rem] font-bold leading-none md:text-[2rem]">
                     Marketplace pulse
                   </p>
-                  <p className="mt-2 text-sm text-staps-ink/55">
-                    Live stats from your current search and vendor filter.
+                  <p className="mt-2 text-sm leading-6 text-white/74">
+                    A refined live snapshot of what is moving across STAPS right now.
                   </p>
                 </div>
-                <Link to="/categories/deals" className="text-sm font-semibold text-[#644df0]">
+                <Link
+                  to="/categories/deals"
+                  className="inline-flex items-center gap-1 rounded-full border border-white/18 bg-white/12 px-4 py-2 text-xs font-semibold text-white/92 backdrop-blur transition hover:bg-white/18"
+                >
                   View deals
+                  <ArrowUpRightIcon className="h-3.5 w-3.5" />
                 </Link>
               </div>
-              <div className="mt-4 grid grid-cols-2 gap-3 md:mt-5">
+              <div className="relative mt-5 grid grid-cols-2 gap-3">
                 {[
                   ["Listings", String(marketplacePulse.listings)],
                   ["Stores", String(marketplacePulse.stores)],
                   ["Verified", String(marketplacePulse.verifiedStores)],
                   ["Deals live", String(marketplacePulse.dealsLive)],
                 ].map(([label, value]) => (
-                  <div key={label} className="rounded-[1.25rem] bg-white px-4 py-4">
-                    <p className="text-[0.72rem] font-bold uppercase tracking-[0.18em] text-staps-ink/40">
+                  <div
+                    key={label}
+                    className="rounded-[1.25rem] border border-white/16 bg-white/12 px-4 py-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.16)] backdrop-blur-xl"
+                  >
+                    <p className="text-[0.7rem] font-bold uppercase tracking-[0.18em] text-white/58">
                       {label}
                     </p>
-                    <p className="mt-2 font-display text-[1.5rem] font-extrabold leading-none text-staps-ink">
+                    <p className="mt-2 font-display text-[1.55rem] font-extrabold leading-none text-white">
                       {value}
                     </p>
                   </div>
@@ -309,39 +350,55 @@ export const HomePage = () => {
               </div>
             </div>
 
-            <div className="rounded-[1.5rem] bg-[#f8f9fd] p-4 md:rounded-[1.75rem] md:p-5">
-              <div className="flex items-start justify-between gap-3">
-                <p className="font-display text-[1.45rem] font-bold leading-none md:text-[2rem]">
-                  Popular right now
-                </p>
-                <Link to="/categories/all-categories" className="text-sm font-semibold text-[#644df0]">
+            <div className="relative overflow-hidden rounded-[1.6rem] border border-white/70 bg-[linear-gradient(145deg,rgba(255,255,255,0.98),rgba(248,243,255,0.95),rgba(237,246,255,0.98))] p-5 shadow-[0_24px_58px_rgba(18,38,32,0.08)] md:rounded-[1.9rem] md:p-6">
+              <div className="absolute right-0 top-0 h-36 w-36 bg-[radial-gradient(circle,rgba(100,77,240,0.16),transparent_65%)]" />
+              <div className="absolute bottom-0 left-0 h-32 w-32 bg-[radial-gradient(circle,rgba(82,196,168,0.16),transparent_64%)]" />
+              <div className="relative flex items-start justify-between gap-3">
+                <div className="max-w-[14rem]">
+                  <span className="inline-flex items-center gap-2 rounded-full bg-[#efeafe] px-3 py-1.5 text-[0.68rem] font-bold uppercase tracking-[0.18em] text-[#644df0]">
+                    <SparklesIcon className="h-3.5 w-3.5" />
+                    Curated now
+                  </span>
+                  <p className="mt-4 font-display text-[1.5rem] font-bold leading-none text-staps-ink md:text-[2rem]">
+                    Popular right now
+                  </p>
+                  <p className="mt-2 text-sm leading-6 text-staps-ink/58">
+                    Jump straight into the busiest categories and keep browsing momentum high.
+                  </p>
+                </div>
+                <Link
+                  to="/categories/all-categories"
+                  className="inline-flex items-center gap-1 rounded-full border border-[#ded8ff] bg-white/80 px-4 py-2 text-xs font-semibold text-[#644df0] shadow-sm transition hover:bg-white"
+                >
                   Browse all
+                  <ArrowUpRightIcon className="h-3.5 w-3.5" />
                 </Link>
               </div>
-              <p className="mt-2 text-sm text-staps-ink/55">
-                Jump straight into the busiest categories in the marketplace.
-              </p>
-              <div className="mt-4 space-y-3">
+              <div className="relative mt-5 space-y-3">
                 {categoryHighlights.length ? (
                   categoryHighlights.map((category, index) => (
                     <Link
                       key={category.slug}
                       to={`/categories/${category.slug}`}
-                      className="flex items-center justify-between rounded-[1.2rem] bg-white px-4 py-3 transition hover:bg-[#f4f1ff]"
+                      className="group flex items-center gap-3 rounded-[1.28rem] border border-white/70 bg-white/80 px-4 py-3 shadow-[0_14px_28px_rgba(100,77,240,0.08)] backdrop-blur transition hover:-translate-y-0.5 hover:bg-white"
                     >
-                      <div className="min-w-0">
+                      <span className="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-[1rem] bg-gradient-to-br from-[#6e54ef] to-[#9aa7ff] font-display text-sm font-extrabold text-white shadow-[0_12px_24px_rgba(110,84,239,0.2)]">
+                        {String(index + 1).padStart(2, "0")}
+                      </span>
+                      <div className="min-w-0 flex-1">
                         <p className="text-sm font-semibold text-staps-ink">
-                          {index + 1}. {category.name}
+                          {category.name}
                         </p>
-                        <p className="text-xs text-staps-ink/50">{category.count} products live</p>
+                        <p className="text-xs text-staps-ink/50">{category.count} active listings</p>
                       </div>
-                      <span className="rounded-full bg-[#efeafe] px-3 py-1 text-xs font-bold text-[#644df0]">
-                        Open
+                      <span className="inline-flex items-center gap-1 text-xs font-semibold text-[#644df0]">
+                        Explore
+                        <ArrowUpRightIcon className="h-3.5 w-3.5 transition group-hover:translate-x-0.5 group-hover:-translate-y-0.5" />
                       </span>
                     </Link>
                   ))
                 ) : (
-                  <div className="rounded-[1.2rem] bg-white px-4 py-4 text-sm text-staps-ink/55">
+                  <div className="rounded-[1.28rem] border border-white/70 bg-white/80 px-4 py-4 text-sm text-staps-ink/55 shadow-[0_14px_28px_rgba(100,77,240,0.08)] backdrop-blur">
                     Category highlights will show up here as soon as products are available.
                   </div>
                 )}
@@ -397,28 +454,6 @@ export const HomePage = () => {
                     Vendor stores will appear here after products are uploaded.
                   </div>
                 )}
-              </div>
-            </div>
-
-            <div className="rounded-[1.5rem] bg-[#f8f9fd] p-4 md:rounded-[1.75rem] md:p-5">
-              <p className="font-display text-[1.45rem] font-bold leading-none md:text-[2rem]">
-                Delivery options
-              </p>
-              <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-2">
-                {["Standard", "Pick up"].map((option) => (
-                  <button
-                    key={option}
-                    type="button"
-                    onClick={() => setDeliveryOption(option)}
-                    className={`w-full rounded-full px-4 py-3 font-semibold ${
-                      deliveryOption === option
-                        ? "bg-[#6e54ef] text-white"
-                        : "bg-white text-staps-ink"
-                    }`}
-                  >
-                    {option}
-                  </button>
-                ))}
               </div>
             </div>
           </aside>

@@ -19,10 +19,24 @@ import { VendorOnboardingPage } from "./pages/VendorOnboardingPage.jsx";
 
 const App = () => {
   const [search, setSearch] = useState("");
+  const [searchRequestToken, setSearchRequestToken] = useState(0);
+
+  const requestSearchResults = () => {
+    setSearchRequestToken((current) => current + 1);
+  };
 
   return (
     <Routes>
-      <Route element={<AppShell search={search} setSearch={setSearch} />}>
+      <Route
+        element={
+          <AppShell
+            search={search}
+            setSearch={setSearch}
+            searchRequestToken={searchRequestToken}
+            requestSearchResults={requestSearchResults}
+          />
+        }
+      >
         <Route index element={<HomePage />} />
         <Route path="categories/:slug" element={<CategoryPage />} />
         <Route path="login" element={<LoginPage />} />

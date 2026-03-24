@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Link, NavLink, useOutletContext, useParams } from "react-router-dom";
 
 import { ProductCard } from "../components/ProductCard.jsx";
@@ -8,12 +8,13 @@ import { categoryToSlug, marketplaceCategories, slugToCategory } from "../lib/ma
 
 export const CategoryPage = () => {
   const { slug } = useParams();
-  const { search } = useOutletContext();
+  const { search, searchRequestToken } = useOutletContext();
   const [products, setProducts] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [selectedVendorIds, setSelectedVendorIds] = useState([]);
   const categoryName = slugToCategory(slug || "");
+  const lastSearchScrollTokenRef = useRef(0);
 
   useEffect(() => {
     const loadProducts = async () => {
@@ -93,6 +94,29 @@ export const CategoryPage = () => {
         : [...current, vendorId],
     );
   };
+
+  useEffect(() => {
+    if (!searchRequestToken || searchRequestToken <= lastSearchScrollTokenRef.current || loading) {
+      return;
+    }
+
+    lastSearchScrollTokenRef.current = searchRequestToken;
+
+    let timeoutId = 0;
+    const frameId = window.requestAnimationFrame(() => {
+      timeoutId = window.setTimeout(() => {
+        document.getElementById("category-results-section")?.scrollIntoView({
+          behavior: "smooth",
+          block: "start",
+        });
+      }, 0);
+    });
+
+    return () => {
+      window.cancelAnimationFrame(frameId);
+      window.clearTimeout(timeoutId);
+    };
+  }, [error, loading, searchRequestToken]);
 
   if (!categoryName) {
     return (
@@ -212,32 +236,34 @@ export const CategoryPage = () => {
               </p>
             </div>
 
-            {loading ? (
-              <div className="surface-card p-6">Loading category products...</div>
-            ) : error ? (
-              <div className="surface-card p-6">
-                <p className="text-red-600">{error}</p>
-                {error === apiUnavailableMessage && (
-                  <p className="mt-2 text-sm text-staps-ink/65">
-                    The frontend is running, but the backend API is not available yet.
-                  </p>
-                )}
-              </div>
-            ) : filteredProducts.length ? (
-              <div className="grid grid-cols-2 gap-3 md:grid-cols-2 md:gap-5 xl:grid-cols-3">
-                {filteredProducts.map((product, index) => (
-                  <ProductCard
-                    key={product._id || product.id}
-                    product={product}
-                    featured={index === 0 && categoryName !== "All Categories"}
-                  />
-                ))}
-              </div>
-            ) : (
-              <div className="surface-card p-6 text-staps-ink/70">
-                No products are available in {categoryName} yet.
-              </div>
-            )}
+            <div id="category-results-section" className="scroll-mt-28">
+              {loading ? (
+                <div className="surface-card p-6">Loading category products...</div>
+              ) : error ? (
+                <div className="surface-card p-6">
+                  <p className="text-red-600">{error}</p>
+                  {error === apiUnavailableMessage && (
+                    <p className="mt-2 text-sm text-staps-ink/65">
+                      The frontend is running, but the backend API is not available yet.
+                    </p>
+                  )}
+                </div>
+              ) : filteredProducts.length ? (
+                <div className="grid grid-cols-2 gap-3 md:grid-cols-2 md:gap-5 xl:grid-cols-3">
+                  {filteredProducts.map((product, index) => (
+                    <ProductCard
+                      key={product._id || product.id}
+                      product={product}
+                      featured={index === 0 && categoryName !== "All Categories"}
+                    />
+                  ))}
+                </div>
+              ) : (
+                <div className="surface-card p-6 text-staps-ink/70">
+                  No products are available in {categoryName} yet.
+                </div>
+              )}
+            </div>
           </div>
         </div>
       </section>

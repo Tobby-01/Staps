@@ -17,7 +17,7 @@ import { useAuth } from "../state/AuthContext.jsx";
 import { useCart } from "../state/CartContext.jsx";
 import { useFavorites } from "../state/FavoritesContext.jsx";
 
-export const Navbar = ({ search, setSearch }) => {
+export const Navbar = ({ search, setSearch, requestSearchResults }) => {
   const { user, logout } = useAuth();
   const { count, clearCart } = useCart();
   const { count: favoriteCount, clearFavorites } = useFavorites();
@@ -44,6 +44,7 @@ export const Navbar = ({ search, setSearch }) => {
   const handleSearchSubmit = (event) => {
     event.preventDefault();
     closeMobileMenu();
+    requestSearchResults?.();
 
     if (!isMarketplaceRoute) {
       navigate("/");
@@ -150,11 +151,11 @@ export const Navbar = ({ search, setSearch }) => {
 
   return (
     <header className="sticky top-0 z-40 px-2.5 pt-2.5 sm:px-4 sm:pt-4">
-      <div className="glass-navbar mx-auto max-w-7xl rounded-[1.7rem] px-4 py-3 md:grid md:grid-cols-[auto_minmax(0,1fr)_auto] md:items-center md:gap-5 md:rounded-[2rem] md:px-5 md:py-4">
-        <div className="flex items-center justify-between gap-3 md:justify-start md:gap-4">
+      <div className="glass-navbar mobile-navbar-shell mx-auto max-w-7xl rounded-[1.7rem] px-4 py-3 md:grid md:grid-cols-[auto_minmax(0,1fr)_auto] md:items-center md:gap-5 md:rounded-[2rem] md:px-5 md:py-4">
+        <div className="mobile-navbar-top flex items-center justify-between gap-3 md:justify-start md:gap-4">
           <Link
             to="/"
-            className="font-display text-[1.95rem] font-extrabold tracking-tight text-staps-ink sm:text-2xl"
+            className="mobile-navbar-brand font-display text-[1.95rem] font-extrabold tracking-tight text-staps-ink sm:text-2xl"
             onClick={closeMobileMenu}
           >
             STAPS
@@ -162,12 +163,12 @@ export const Navbar = ({ search, setSearch }) => {
           <span className="glass-chip hidden text-xs font-semibold text-[#5144c7] md:inline-flex">
             Campus marketplace
           </span>
-          <div className="flex items-center gap-2 md:hidden">
+          <div className="glass-mobile-toolbar flex items-center gap-2 md:hidden">
             {showActivityIcons ? (
               <>
                 <Link
                   to={messagesPath}
-                  className="glass-icon-button relative inline-flex h-11 w-11 items-center justify-center text-staps-ink"
+                  className="glass-icon-button glass-mobile-toolbar-button relative inline-flex h-11 w-11 items-center justify-center text-staps-ink"
                   aria-label="Open messages"
                   title="Messages"
                 >
@@ -180,7 +181,7 @@ export const Navbar = ({ search, setSearch }) => {
                 </Link>
                 <Link
                   to={notificationsPath}
-                  className="glass-icon-button relative inline-flex h-11 w-11 items-center justify-center text-staps-ink"
+                  className="glass-icon-button glass-mobile-toolbar-button relative inline-flex h-11 w-11 items-center justify-center text-staps-ink"
                   aria-label="Open notifications"
                   title="Notifications"
                 >
@@ -196,7 +197,7 @@ export const Navbar = ({ search, setSearch }) => {
             <button
               type="button"
               onClick={() => setMobileMenuOpen((current) => !current)}
-              className="glass-icon-button inline-flex h-11 w-11 items-center justify-center"
+              className="glass-icon-button glass-mobile-toolbar-button inline-flex h-11 w-11 items-center justify-center"
               aria-label={mobileMenuOpen ? "Close menu" : "Open menu"}
               aria-expanded={mobileMenuOpen}
             >
@@ -207,9 +208,9 @@ export const Navbar = ({ search, setSearch }) => {
 
         <form
           onSubmit={handleSearchSubmit}
-          className="mt-3 grid min-w-0 grid-cols-[minmax(0,1fr)_auto] items-center gap-2.5 md:mt-0 md:flex md:gap-3"
+          className="mobile-navbar-search mt-3 grid min-w-0 grid-cols-[minmax(0,1fr)_auto] items-center gap-2.5 md:mt-0 md:flex md:gap-3"
         >
-          <div className="glass-search-shell flex min-w-0 w-full items-center gap-2.5 px-3.5 py-2.5 md:gap-3 md:px-5 md:py-3">
+          <div className="glass-search-shell glass-mobile-search-shell flex min-w-0 w-full items-center gap-2.5 px-3.5 py-2.5 md:gap-3 md:px-5 md:py-3">
             <MagnifyingGlassIcon className="h-[1.05rem] w-[1.05rem] shrink-0 text-staps-ink/35" />
             <input
               value={search}
@@ -229,7 +230,7 @@ export const Navbar = ({ search, setSearch }) => {
           </div>
           <button
             type="submit"
-            className="glass-action-pill glass-action-pill-accent inline-flex h-11 w-11 shrink-0 items-center justify-center text-sm font-semibold text-staps-ink md:w-auto md:px-4"
+            className="glass-action-pill glass-action-pill-accent glass-mobile-search-trigger inline-flex h-11 w-11 shrink-0 items-center justify-center text-sm font-semibold text-staps-ink md:w-auto md:px-4"
           >
             <MagnifyingGlassIcon className="h-5 w-5 md:hidden" />
             <span className="hidden md:inline">Search</span>

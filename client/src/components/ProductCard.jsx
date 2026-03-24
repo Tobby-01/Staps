@@ -26,6 +26,11 @@ export const ProductCard = ({ product, featured = false }) => {
     hasDiscount && basePrice > 0 ? Math.round(((basePrice - activePrice) / basePrice) * 100) : 0;
   const vendorName = product.vendor?.name || "Campus vendor";
   const categoryName = product.category || "Campus picks";
+  const createdAtMs = product.createdAt ? new Date(product.createdAt).getTime() : Number.NaN;
+  const isNewListing =
+    Number.isFinite(createdAtMs) &&
+    Date.now() >= createdAtMs &&
+    Date.now() - createdAtMs <= 10 * 60 * 1000;
 
   return (
     <article
@@ -57,15 +62,22 @@ export const ProductCard = ({ product, featured = false }) => {
             <span className="hidden md:inline">{favorite ? "Saved" : "Save"}</span>
           </button>
         ) : null}
-        {discountPercent ? (
-          <span className="absolute left-3 top-3 z-10 rounded-xl bg-[#fff1df] px-2.5 py-1 text-[0.72rem] font-bold text-[#ed6a2f] shadow-sm md:left-4 md:top-4">
-            -{discountPercent}%
-          </span>
-        ) : product.isFlashSale && !featured ? (
-          <span className="absolute left-3 top-3 z-10 rounded-full bg-[#ffe04a] px-2.5 py-1 text-[0.72rem] font-bold text-staps-ink md:left-4 md:top-4 md:px-3 md:py-2 md:text-xs">
-            Top item
-          </span>
-        ) : null}
+        <div className="absolute left-3 top-3 z-10 flex flex-col gap-2 md:left-4 md:top-4">
+          {isNewListing ? (
+            <span className="rounded-full bg-gradient-to-r from-[#122620] to-[#2f5a4f] px-2.5 py-1 text-[0.68rem] font-bold uppercase tracking-[0.18em] text-white shadow-sm md:px-3 md:py-1.5 md:text-[0.72rem]">
+              New
+            </span>
+          ) : null}
+          {discountPercent ? (
+            <span className="rounded-xl bg-[#fff1df] px-2.5 py-1 text-[0.72rem] font-bold text-[#ed6a2f] shadow-sm md:px-3 md:py-1.5 md:text-xs">
+              -{discountPercent}%
+            </span>
+          ) : product.isFlashSale && !featured ? (
+            <span className="rounded-full bg-[#ffe04a] px-2.5 py-1 text-[0.72rem] font-bold text-staps-ink md:px-3 md:py-2 md:text-xs">
+              Top item
+            </span>
+          ) : null}
+        </div>
         {previewImage ? (
           <img src={previewImage} alt={product.name} className="h-full w-full object-cover" />
         ) : (
@@ -115,7 +127,7 @@ export const ProductCard = ({ product, featured = false }) => {
           <button
             type="button"
             onClick={() => addToCart(product)}
-            className="w-full rounded-[1rem] bg-gradient-to-r from-[#ff9a1f] to-[#ed6a2f] px-3 py-2.5 text-sm font-semibold text-white shadow-[0_12px_24px_rgba(237,106,47,0.22)] transition hover:brightness-[1.03]"
+            className="w-full rounded-[1rem] bg-gradient-to-r from-[#6e54ef] to-[#9186ff] px-3 py-2.5 text-sm font-semibold text-white shadow-[0_12px_24px_rgba(110,84,239,0.24)] transition hover:brightness-[1.03]"
           >
             Add to cart
           </button>
