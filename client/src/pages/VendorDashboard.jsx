@@ -672,7 +672,7 @@ export const VendorDashboard = () => {
             </div>
           </section>
 
-          <section className="surface-card p-6">
+          <section id="messages" className="surface-card scroll-mt-28 p-6">
             <p className="text-sm font-bold uppercase tracking-[0.25em] text-[#6e54ef]">
               Messages
             </p>
@@ -720,7 +720,7 @@ export const VendorDashboard = () => {
             </div>
           </section>
 
-          <section className="surface-card p-6">
+          <section id="notifications" className="surface-card scroll-mt-28 p-6">
             <p className="text-sm font-bold uppercase tracking-[0.25em] text-[#6e54ef]">
               Alerts
             </p>

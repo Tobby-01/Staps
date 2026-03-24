@@ -209,7 +209,7 @@ export const HomePage = () => {
             ) : (
               <div
                 id="marketplace-grid"
-                className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3 xl:gap-5"
+                className="grid grid-cols-2 gap-3 md:grid-cols-2 md:gap-4 xl:grid-cols-3 xl:gap-5"
               >
                 {featuredProduct && <ProductCard product={featuredProduct} featured />}
                 {gridProducts.slice(0, 5).map((product) => (

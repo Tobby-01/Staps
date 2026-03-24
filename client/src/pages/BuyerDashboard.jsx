@@ -625,7 +625,7 @@ export const ShopperDashboard = () => {
             </div>
           </section>
 
-          <section className="surface-card p-6">
+          <section id="messages" className="surface-card scroll-mt-28 p-6">
             <p className="text-sm font-bold uppercase tracking-[0.25em] text-[#6e54ef]">
               Messages
             </p>
@@ -673,7 +673,7 @@ export const ShopperDashboard = () => {
             </div>
           </section>
 
-          <section className="surface-card p-6">
+          <section id="notifications" className="surface-card scroll-mt-28 p-6">
             <p className="text-sm font-bold uppercase tracking-[0.25em] text-[#6e54ef]">Alerts</p>
             <h2 className="mt-2 font-display text-2xl font-extrabold">Notifications</h2>
             <div className="mt-5 space-y-3">
