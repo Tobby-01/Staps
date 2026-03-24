@@ -103,6 +103,56 @@ export const HomePage = () => {
     );
   }, [products, selectedVendorIds]);
 
+  const marketplacePulse = useMemo(() => {
+    const vendorIds = new Set();
+    const verifiedVendorIds = new Set();
+    let dealsLive = 0;
+
+    filteredProducts.forEach((product) => {
+      const vendorId = product.vendor?._id || product.vendor?.id;
+
+      if (vendorId) {
+        vendorIds.add(vendorId);
+      }
+
+      if (vendorId && product.vendor?.verified) {
+        verifiedVendorIds.add(vendorId);
+      }
+
+      if (
+        product.isFlashSale ||
+        (product.discountPrice && Number(product.discountPrice) < Number(product.price))
+      ) {
+        dealsLive += 1;
+      }
+    });
+
+    return {
+      listings: filteredProducts.length,
+      stores: vendorIds.size,
+      verifiedStores: verifiedVendorIds.size,
+      dealsLive,
+    };
+  }, [filteredProducts]);
+
+  const categoryHighlights = useMemo(() => {
+    const counts = new Map();
+
+    filteredProducts.forEach((product) => {
+      const category = product.category || "Campus picks";
+      counts.set(category, (counts.get(category) || 0) + 1);
+    });
+
+    return Array.from(counts.entries())
+      .sort((left, right) => right[1] - left[1] || left[0].localeCompare(right[0]))
+      .slice(0, 4)
+      .map(([name, count]) => ({
+        name,
+        count,
+        slug: categoryToSlug(name),
+      }));
+  }, [filteredProducts]);
+
   const featuredProduct = filteredProducts[0] || null;
   const gridProducts = featuredProduct
     ? filteredProducts.filter(
@@ -227,40 +277,75 @@ export const HomePage = () => {
 
           <aside className="order-2 space-y-3.5 xl:order-1 xl:space-y-4">
             <div className="rounded-[1.5rem] bg-[#f8f9fd] p-4 md:rounded-[1.75rem] md:p-5">
-              <div className="flex items-center justify-between">
+              <div className="flex items-start justify-between gap-3">
                 <div>
                   <p className="font-display text-[1.45rem] font-bold leading-none md:text-[2rem]">
-                    Price range
+                    Marketplace pulse
                   </p>
                   <p className="mt-2 text-sm text-staps-ink/55">
-                    Average campus price is NGN 12,000
+                    Live stats from your current search and vendor filter.
                   </p>
                 </div>
-                <button
-                  type="button"
-                  onClick={() => window.scrollTo({ top: 0, behavior: "smooth" })}
-                  className="text-sm font-semibold text-staps-ink/45"
-                >
-                  Reset
-                </button>
+                <Link to="/categories/deals" className="text-sm font-semibold text-[#644df0]">
+                  View deals
+                </Link>
               </div>
-              <div className="mt-4 rounded-[1.3rem] bg-white p-4 md:mt-6 md:rounded-[1.5rem]">
-                <div className="h-24 rounded-[1.1rem] bg-gradient-to-t from-[#cfc6ff] to-[#f0ecff] md:h-28 md:rounded-[1.25rem]" />
-                <div className="mt-4 flex items-center justify-between text-sm font-bold">
-                  <span className="rounded-full bg-staps-ink px-3 py-2 text-white">NGN 2k</span>
-                  <span className="rounded-full bg-staps-ink px-3 py-2 text-white">NGN 45k</span>
-                </div>
+              <div className="mt-4 grid grid-cols-2 gap-3 md:mt-5">
+                {[
+                  ["Listings", String(marketplacePulse.listings)],
+                  ["Stores", String(marketplacePulse.stores)],
+                  ["Verified", String(marketplacePulse.verifiedStores)],
+                  ["Deals live", String(marketplacePulse.dealsLive)],
+                ].map(([label, value]) => (
+                  <div key={label} className="rounded-[1.25rem] bg-white px-4 py-4">
+                    <p className="text-[0.72rem] font-bold uppercase tracking-[0.18em] text-staps-ink/40">
+                      {label}
+                    </p>
+                    <p className="mt-2 font-display text-[1.5rem] font-extrabold leading-none text-staps-ink">
+                      {value}
+                    </p>
+                  </div>
+                ))}
               </div>
             </div>
 
             <div className="rounded-[1.5rem] bg-[#f8f9fd] p-4 md:rounded-[1.75rem] md:p-5">
-              <div className="flex items-center justify-between">
+              <div className="flex items-start justify-between gap-3">
                 <p className="font-display text-[1.45rem] font-bold leading-none md:text-[2rem]">
-                  Shopper rating
+                  Popular right now
                 </p>
-                <span className="text-sm text-staps-ink/45">4 stars &amp; up</span>
+                <Link to="/categories/all-categories" className="text-sm font-semibold text-[#644df0]">
+                  Browse all
+                </Link>
               </div>
-              <p className="mt-3 text-xl text-[#ffcb45]">&#9733;&#9733;&#9733;&#9733;&#9734;</p>
+              <p className="mt-2 text-sm text-staps-ink/55">
+                Jump straight into the busiest categories in the marketplace.
+              </p>
+              <div className="mt-4 space-y-3">
+                {categoryHighlights.length ? (
+                  categoryHighlights.map((category, index) => (
+                    <Link
+                      key={category.slug}
+                      to={`/categories/${category.slug}`}
+                      className="flex items-center justify-between rounded-[1.2rem] bg-white px-4 py-3 transition hover:bg-[#f4f1ff]"
+                    >
+                      <div className="min-w-0">
+                        <p className="text-sm font-semibold text-staps-ink">
+                          {index + 1}. {category.name}
+                        </p>
+                        <p className="text-xs text-staps-ink/50">{category.count} products live</p>
+                      </div>
+                      <span className="rounded-full bg-[#efeafe] px-3 py-1 text-xs font-bold text-[#644df0]">
+                        Open
+                      </span>
+                    </Link>
+                  ))
+                ) : (
+                  <div className="rounded-[1.2rem] bg-white px-4 py-4 text-sm text-staps-ink/55">
+                    Category highlights will show up here as soon as products are available.
+                  </div>
+                )}
+              </div>
             </div>
 
             <div className="rounded-[1.5rem] bg-[#f8f9fd] p-4 md:rounded-[1.75rem] md:p-5">
