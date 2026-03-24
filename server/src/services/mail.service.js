@@ -9,8 +9,119 @@ import { ApiError } from "../utils/api-error.js";
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
+const FREEMAIL_DOMAINS = new Set([
+  "gmail.com",
+  "googlemail.com",
+  "yahoo.com",
+  "ymail.com",
+  "rocketmail.com",
+  "outlook.com",
+  "hotmail.com",
+  "live.com",
+  "msn.com",
+  "aol.com",
+  "icloud.com",
+  "me.com",
+  "mac.com",
+]);
+
+const extractEmailAddress = (value = "") => {
+  const normalized = String(value).trim();
+  const match = normalized.match(/<([^>]+)>/);
+  return (match?.[1] || normalized).trim().toLowerCase();
+};
+
+const getDomainFromAddress = (value = "") => {
+  const address = extractEmailAddress(value);
+  const [, domain = ""] = address.split("@");
+  return domain.trim().toLowerCase();
+};
+
+const compactObject = (value) =>
+  Object.fromEntries(
+    Object.entries(value).filter(([, entryValue]) => entryValue !== undefined && entryValue !== ""),
+  );
+
+const toErrorMessage = (value) => {
+  if (!value) {
+    return undefined;
+  }
+
+  if (typeof value === "string") {
+    return value;
+  }
+
+  return value?.message || String(value);
+};
+
 export const hasMailConfig = () =>
   Boolean(env.smtpHost && env.smtpPort && env.smtpUser && env.smtpPass && env.mailFrom);
+
+export const getMailConfigWarnings = () => {
+  const warnings = [];
+  const fromDomain = getDomainFromAddress(env.mailFrom);
+  const smtpDomain = getDomainFromAddress(env.smtpUser);
+
+  if (!env.isProduction) {
+    return warnings;
+  }
+
+  if (fromDomain && FREEMAIL_DOMAINS.has(fromDomain)) {
+    warnings.push(
+      `MAIL_FROM uses the freemail domain "${fromDomain}". Switch to a domain mailbox such as hello@yourdomain.com and authenticate that domain with SPF, DKIM, and DMARC.`,
+    );
+  }
+
+  if (smtpDomain && FREEMAIL_DOMAINS.has(smtpDomain)) {
+    warnings.push(
+      `SMTP_USER uses the freemail domain "${smtpDomain}". Consumer inboxes are unreliable for production notifications; use a transactional email provider or a mailbox on your own domain instead.`,
+    );
+  }
+
+  if (fromDomain && smtpDomain && fromDomain !== smtpDomain) {
+    warnings.push(
+      `MAIL_FROM (${fromDomain}) does not match SMTP_USER (${smtpDomain}). Align them under the same authenticated domain to reduce spoofing and deliverability issues.`,
+    );
+  }
+
+  return warnings;
+};
+
+export const getMailDiagnosticContext = () => ({
+  transport: {
+    host: env.smtpHost || "<missing>",
+    port: env.smtpPort,
+    secure: env.smtpSecure,
+    user: env.smtpUser || "<missing>",
+    from: env.mailFrom || "<missing>",
+    debug: env.smtpDebug,
+    connectionTimeoutMs: env.smtpConnectionTimeoutMs,
+    greetingTimeoutMs: env.smtpGreetingTimeoutMs,
+    socketTimeoutMs: env.smtpSocketTimeoutMs,
+  },
+  warnings: getMailConfigWarnings(),
+});
+
+export const formatMailErrorForLog = (error) =>
+  compactObject({
+    name: error?.name,
+    message: error?.message || String(error),
+    code: error?.code,
+    command: error?.command,
+    response: error?.response,
+    responseCode: error?.responseCode,
+    statusCode: error?.statusCode,
+    syscall: error?.syscall,
+    errno: error?.errno,
+    address: error?.address,
+    port: error?.port,
+    hostname: error?.hostname,
+    stage: error?.stage,
+    source: error?.source,
+    reason: error?.reason,
+    cause: toErrorMessage(error?.cause),
+    stack: error?.stack,
+  });
 
 let transporter;
 
@@ -27,6 +138,8 @@ const getTransporter = () => {
       host: env.smtpHost,
       port: env.smtpPort,
       secure: env.smtpSecure,
+      logger: env.smtpDebug,
+      debug: env.smtpDebug,
       connectionTimeout: env.smtpConnectionTimeoutMs,
       greetingTimeout: env.smtpGreetingTimeoutMs,
       socketTimeout: env.smtpSocketTimeoutMs,
@@ -63,6 +176,17 @@ const sendMail = async (payload) => {
   try {
     await getTransporter().sendMail(payload);
   } catch (error) {
+    console.error("SMTP send failed.");
+    console.error(
+      "Mail request context:",
+      compactObject({
+        to: Array.isArray(payload?.to) ? payload.to.join(", ") : payload?.to,
+        subject: payload?.subject,
+      }),
+    );
+    console.error("Mail transport context:", getMailDiagnosticContext());
+    console.error("Mail transport error details:", formatMailErrorForLog(error));
+
     throw new ApiError(
       503,
       "We could not send email right now. Please check SMTP settings and try again.",

@@ -93,7 +93,6 @@ export const VendorDashboard = () => {
   const [brandingSaving, setBrandingSaving] = useState(false);
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
-  const brandingLocked = Boolean(profile?.brandingLocked);
   const sellingRestricted = ["suspended", "banned"].includes(profile?.sellingStatus);
   const canManageListings = Boolean(profile?.verified) && !sellingRestricted;
   const sellingRestrictionCopy = getSellingRestrictionCopy(profile);
@@ -506,25 +505,18 @@ export const VendorDashboard = () => {
                 {profile?.name || "Your store"}
               </h2>
               <p className="mt-2 max-w-2xl text-sm text-staps-ink/60">
-                {brandingLocked
-                  ? "Your store name and profile photo are locked because the one-time update has already been used."
-                  : "Choose the storefront name and profile photo shoppers will recognize. This can only be saved once."}
+                Choose the storefront name and profile photo shoppers will recognize. You can update
+                them whenever your brand changes.
               </p>
               {profile?.brandingUpdatedAt ? (
                 <p className="mt-2 text-xs font-semibold uppercase tracking-[0.16em] text-staps-ink/45">
-                  Locked {formatNotificationTime(profile.brandingUpdatedAt)}
+                  Updated {formatNotificationTime(profile.brandingUpdatedAt)}
                 </p>
               ) : null}
             </div>
           </div>
-          <div
-            className={`inline-flex rounded-full px-4 py-2 text-xs font-semibold uppercase tracking-[0.18em] ${
-              brandingLocked
-                ? "bg-[#eef2ff] text-[#5a49d6]"
-                : "bg-[#f3fff9] text-emerald-700"
-            }`}
-          >
-            {brandingLocked ? "Locked after first update" : "One-time update available"}
+          <div className="inline-flex rounded-full bg-[#f3fff9] px-4 py-2 text-xs font-semibold uppercase tracking-[0.18em] text-emerald-700">
+            Open for updates
           </div>
         </div>
 
@@ -534,16 +526,12 @@ export const VendorDashboard = () => {
               className="field"
               placeholder="Store name"
               value={brandingForm.name}
-              disabled={brandingLocked || brandingSaving}
+              disabled={brandingSaving}
               onChange={(event) =>
                 setBrandingForm((current) => ({ ...current, name: event.target.value }))
               }
             />
-            <label
-              className={`field flex items-center justify-between gap-3 ${
-                brandingLocked ? "cursor-not-allowed opacity-60" : "cursor-pointer"
-              }`}
-            >
+            <label className="field flex cursor-pointer items-center justify-between gap-3">
               <span className="truncate text-staps-ink/70">
                 {brandingForm.avatar ? brandingForm.avatar.name : "Upload store profile photo"}
               </span>
@@ -554,7 +542,7 @@ export const VendorDashboard = () => {
                 className="hidden"
                 type="file"
                 accept="image/*"
-                disabled={brandingLocked || brandingSaving}
+                disabled={brandingSaving}
                 onChange={(event) =>
                   setBrandingForm((current) => ({
                     ...current,
@@ -564,7 +552,7 @@ export const VendorDashboard = () => {
               />
             </label>
             <p className="text-xs text-staps-ink/50">
-              Save once only. After this update, the store name and profile photo can no longer be edited.
+              Save anytime to refresh your store name or profile photo.
             </p>
           </div>
 
@@ -594,13 +582,9 @@ export const VendorDashboard = () => {
           <button
             className="primary-button lg:col-span-2"
             type="submit"
-            disabled={brandingLocked || brandingSaving}
+            disabled={brandingSaving}
           >
-            {brandingLocked
-              ? "Store identity locked"
-              : brandingSaving
-                ? "Saving store identity..."
-                : "Save one-time store identity update"}
+            {brandingSaving ? "Saving store identity..." : "Save store identity update"}
           </button>
         </form>
       </section>

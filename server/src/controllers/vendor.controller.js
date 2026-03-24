@@ -178,10 +178,6 @@ export const updateVendorBranding = asyncHandler(async (req, res) => {
     throw new ApiError(404, "Vendor profile not found.");
   }
 
-  if (vendor.brandingLocked) {
-    throw new ApiError(400, "Your store name and profile photo can only be updated once.");
-  }
-
   const nextStoreName = req.body.name?.trim();
   if (!nextStoreName && !req.file) {
     throw new ApiError(400, "Add a store name or profile photo before saving.");
@@ -201,7 +197,6 @@ export const updateVendorBranding = asyncHandler(async (req, res) => {
     user.avatarUrl = `/uploads/avatars/${req.file.filename}`;
   }
 
-  vendor.brandingLocked = true;
   vendor.brandingUpdatedAt = new Date();
 
   await Promise.all([vendor.save(), user.save()]);
@@ -213,7 +208,7 @@ export const updateVendorBranding = asyncHandler(async (req, res) => {
 
   res.json({
     success: true,
-    message: "Store identity updated successfully. This update is now locked.",
+    message: "Store identity updated successfully.",
     vendor: populatedVendor,
   });
 });
