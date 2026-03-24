@@ -1,5 +1,6 @@
 import { env } from "../config/env.js";
 import { ROLES } from "../constants/roles.js";
+import { User } from "../models/user.model.js";
 import { Vendor } from "../models/vendor.model.js";
 import { ApiError } from "../utils/api-error.js";
 import { asyncHandler } from "../utils/async-handler.js";
@@ -13,7 +14,10 @@ import {
 import { finalizePaystackPayment } from "../services/payment.service.js";
 
 export const getVendorProfile = asyncHandler(async (req, res) => {
-  const vendor = await Vendor.findOne({ user: req.user.id }).populate("user", "name email role");
+  const vendor = await Vendor.findOne({ user: req.user.id }).populate(
+    "user",
+    "name email role avatarUrl username",
+  );
 
   res.json({
     success: true,
@@ -159,5 +163,51 @@ export const setupVendorPayout = asyncHandler(async (req, res) => {
     success: true,
     message: "Vendor payout account saved successfully.",
     payoutAccount: vendor.payoutAccount,
+  });
+});
+
+export const updateVendorBranding = asyncHandler(async (req, res) => {
+  const vendor = await Vendor.findOne({ user: req.user.id });
+  if (!vendor) {
+    throw new ApiError(404, "Vendor profile not found.");
+  }
+
+  if (vendor.brandingLocked) {
+    throw new ApiError(400, "Your store name and profile photo can only be updated once.");
+  }
+
+  const nextStoreName = req.body.name?.trim();
+  if (!nextStoreName && !req.file) {
+    throw new ApiError(400, "Add a store name or profile photo before saving.");
+  }
+
+  const user = await User.findById(req.user.id);
+  if (!user) {
+    throw new ApiError(404, "User not found.");
+  }
+
+  if (nextStoreName) {
+    vendor.name = nextStoreName;
+    user.name = nextStoreName;
+  }
+
+  if (req.file) {
+    user.avatarUrl = `/uploads/avatars/${req.file.filename}`;
+  }
+
+  vendor.brandingLocked = true;
+  vendor.brandingUpdatedAt = new Date();
+
+  await Promise.all([vendor.save(), user.save()]);
+
+  const populatedVendor = await Vendor.findOne({ user: req.user.id }).populate(
+    "user",
+    "name email role avatarUrl username",
+  );
+
+  res.json({
+    success: true,
+    message: "Store identity updated successfully. This update is now locked.",
+    vendor: populatedVendor,
   });
 });

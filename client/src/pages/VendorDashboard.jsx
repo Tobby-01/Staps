@@ -57,6 +57,10 @@ export const VendorDashboard = () => {
   const [notifications, setNotifications] = useState([]);
   const [conversations, setConversations] = useState([]);
   const [banks, setBanks] = useState([]);
+  const [brandingForm, setBrandingForm] = useState({
+    name: "",
+    avatar: null,
+  });
   const [form, setForm] = useState(initialProduct);
   const [editingProductId, setEditingProductId] = useState("");
   const [editForm, setEditForm] = useState(initialProduct);
@@ -65,9 +69,18 @@ export const VendorDashboard = () => {
     bankCode: "",
     accountNumber: "",
   });
+  const [brandingSaving, setBrandingSaving] = useState(false);
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
+  const brandingLocked = Boolean(profile?.brandingLocked);
 
+  const brandingPreview = useMemo(
+    () =>
+      brandingForm.avatar
+        ? { name: brandingForm.avatar.name, url: URL.createObjectURL(brandingForm.avatar) }
+        : null,
+    [brandingForm.avatar],
+  );
   const imagePreviews = useMemo(
     () => form.images.map((file) => ({ name: file.name, url: URL.createObjectURL(file) })),
     [form.images],
@@ -75,6 +88,15 @@ export const VendorDashboard = () => {
   const editImagePreviews = useMemo(
     () => editForm.images.map((file) => ({ name: file.name, url: URL.createObjectURL(file) })),
     [editForm.images],
+  );
+
+  useEffect(
+    () => () => {
+      if (brandingPreview?.url) {
+        URL.revokeObjectURL(brandingPreview.url);
+      }
+    },
+    [brandingPreview],
   );
 
   useEffect(
@@ -123,6 +145,14 @@ export const VendorDashboard = () => {
         bankCode: vendorResponse.vendor?.payoutAccount?.bankCode || "",
         accountNumber: vendorResponse.vendor?.payoutAccount?.accountNumber || "",
       });
+      setBrandingForm((current) =>
+        current.name || current.avatar
+          ? current
+          : {
+              name: vendorResponse.vendor?.name || "",
+              avatar: null,
+            },
+      );
       setError("");
     } catch (requestError) {
       if (!silent) {
@@ -220,6 +250,46 @@ export const VendorDashboard = () => {
     }
   };
 
+  const saveStoreBranding = async (event) => {
+    event.preventDefault();
+
+    const trimmedName = brandingForm.name.trim();
+    if (!trimmedName && !brandingForm.avatar) {
+      setError("Add your store name or a profile photo before saving.");
+      setMessage("");
+      return;
+    }
+
+    const formData = new FormData();
+    if (trimmedName) {
+      formData.append("name", trimmedName);
+    }
+
+    if (brandingForm.avatar) {
+      formData.append("avatar", brandingForm.avatar);
+    }
+
+    try {
+      setBrandingSaving(true);
+      setError("");
+      setMessage("");
+      const response = await apiRequest("/api/vendors/branding", {
+        method: "PATCH",
+        body: formData,
+      });
+      setBrandingForm({
+        name: "",
+        avatar: null,
+      });
+      setMessage(response.message || "Store identity updated successfully.");
+      await loadDashboard();
+    } catch (requestError) {
+      setError(requestError.message);
+    } finally {
+      setBrandingSaving(false);
+    }
+  };
+
   const updateOrderStatus = async (orderId, action) => {
     await apiRequest(`/api/orders/${orderId}/${action}`, { method: "PATCH" });
     setMessage(`Order updated: ${action}`);
@@ -307,6 +377,14 @@ export const VendorDashboard = () => {
   const securedEarnings = orders
     .filter((order) => ["processing", "shipped", "delivered", "completed"].includes(order.status))
     .reduce((sum, order) => sum + order.totalAmount, 0);
+  const storeIdentityLabel = brandingForm.name.trim() || profile?.name || "Your store";
+  const storeIdentityImage = brandingPreview?.url || resolveAssetUrl(profile?.user?.avatarUrl);
+  const storeIdentityInitials = storeIdentityLabel
+    .split(" ")
+    .map((part) => part[0])
+    .join("")
+    .slice(0, 2)
+    .toUpperCase();
 
   return (
     <div className="space-y-6">
@@ -330,6 +408,127 @@ export const VendorDashboard = () => {
           <span className={error ? "text-red-600" : "text-staps-orange"}>{error || message}</span>
         </div>
       )}
+
+      <section className="surface-card p-6">
+        <div className="flex flex-col gap-5 lg:flex-row lg:items-start lg:justify-between">
+          <div className="flex items-center gap-4">
+            {storeIdentityImage ? (
+              <img
+                src={storeIdentityImage}
+                alt={storeIdentityLabel}
+                className="h-24 w-24 rounded-[1.8rem] object-cover shadow-soft"
+              />
+            ) : (
+              <div className="flex h-24 w-24 items-center justify-center rounded-[1.8rem] bg-[#eef2ff] font-display text-3xl font-bold text-[#5a49d6] shadow-soft">
+                {storeIdentityInitials || "ST"}
+              </div>
+            )}
+            <div className="min-w-0">
+              <p className="text-sm font-bold uppercase tracking-[0.25em] text-[#6e54ef]">
+                Store identity
+              </p>
+              <h2 className="mt-2 font-display text-2xl font-extrabold text-staps-ink">
+                {profile?.name || "Your store"}
+              </h2>
+              <p className="mt-2 max-w-2xl text-sm text-staps-ink/60">
+                {brandingLocked
+                  ? "Your store name and profile photo are locked because the one-time update has already been used."
+                  : "Choose the storefront name and profile photo shoppers will recognize. This can only be saved once."}
+              </p>
+              {profile?.brandingUpdatedAt ? (
+                <p className="mt-2 text-xs font-semibold uppercase tracking-[0.16em] text-staps-ink/45">
+                  Locked {formatNotificationTime(profile.brandingUpdatedAt)}
+                </p>
+              ) : null}
+            </div>
+          </div>
+          <div
+            className={`inline-flex rounded-full px-4 py-2 text-xs font-semibold uppercase tracking-[0.18em] ${
+              brandingLocked
+                ? "bg-[#eef2ff] text-[#5a49d6]"
+                : "bg-[#f3fff9] text-emerald-700"
+            }`}
+          >
+            {brandingLocked ? "Locked after first update" : "One-time update available"}
+          </div>
+        </div>
+
+        <form onSubmit={saveStoreBranding} className="mt-6 grid gap-4 lg:grid-cols-[minmax(0,1fr)_240px]">
+          <div className="grid gap-4">
+            <input
+              className="field"
+              placeholder="Store name"
+              value={brandingForm.name}
+              disabled={brandingLocked || brandingSaving}
+              onChange={(event) =>
+                setBrandingForm((current) => ({ ...current, name: event.target.value }))
+              }
+            />
+            <label
+              className={`field flex items-center justify-between gap-3 ${
+                brandingLocked ? "cursor-not-allowed opacity-60" : "cursor-pointer"
+              }`}
+            >
+              <span className="truncate text-staps-ink/70">
+                {brandingForm.avatar ? brandingForm.avatar.name : "Upload store profile photo"}
+              </span>
+              <span className="rounded-full bg-[#eef2ff] px-4 py-2 text-sm font-semibold text-[#5a49d6]">
+                Choose image
+              </span>
+              <input
+                className="hidden"
+                type="file"
+                accept="image/*"
+                disabled={brandingLocked || brandingSaving}
+                onChange={(event) =>
+                  setBrandingForm((current) => ({
+                    ...current,
+                    avatar: event.target.files?.[0] || null,
+                  }))
+                }
+              />
+            </label>
+            <p className="text-xs text-staps-ink/50">
+              Save once only. After this update, the store name and profile photo can no longer be edited.
+            </p>
+          </div>
+
+          <div className="rounded-[1.6rem] bg-[#f8f9fd] p-4">
+            <p className="text-xs font-semibold uppercase tracking-[0.14em] text-staps-ink/45">
+              Preview
+            </p>
+            <div className="mt-4 flex flex-col items-center gap-3 text-center">
+              {storeIdentityImage ? (
+                <img
+                  src={storeIdentityImage}
+                  alt={storeIdentityLabel}
+                  className="h-28 w-28 rounded-[1.8rem] object-cover"
+                />
+              ) : (
+                <div className="flex h-28 w-28 items-center justify-center rounded-[1.8rem] bg-[#eef2ff] font-display text-3xl font-bold text-[#5a49d6]">
+                  {storeIdentityInitials || "ST"}
+                </div>
+              )}
+              <div>
+                <p className="font-semibold text-staps-ink">{storeIdentityLabel}</p>
+                <p className="text-sm text-staps-ink/55">Storefront preview</p>
+              </div>
+            </div>
+          </div>
+
+          <button
+            className="primary-button lg:col-span-2"
+            type="submit"
+            disabled={brandingLocked || brandingSaving}
+          >
+            {brandingLocked
+              ? "Store identity locked"
+              : brandingSaving
+                ? "Saving store identity..."
+                : "Save one-time store identity update"}
+          </button>
+        </form>
+      </section>
 
       <section className="surface-card p-5">
         <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">

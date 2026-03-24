@@ -7,6 +7,7 @@ import {
   listVerifiedVendors,
   listPayoutBanks,
   setupVendorPayout,
+  updateVendorBranding,
   verifyVendorFee,
 } from "../controllers/vendor.controller.js";
 import { authMiddleware } from "../middlewares/auth.middleware.js";
@@ -21,5 +22,6 @@ router.post("/apply", authMiddleware, upload.single("idDocument"), applyVendor);
 router.post("/payment/initialize", authMiddleware, initializeVendorFee);
 router.get("/payment/verify/:reference", authMiddleware, verifyVendorFee);
 router.post("/payout/setup", authMiddleware, setupVendorPayout);
+router.patch("/branding", authMiddleware, upload.single("avatar"), updateVendorBranding);
 
 export default router;

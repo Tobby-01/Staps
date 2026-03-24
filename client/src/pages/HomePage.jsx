@@ -243,10 +243,7 @@ export const HomePage = () => {
                     </div>
                   </div>
 
-                  <div className="relative hidden overflow-hidden rounded-[1.7rem] border border-white/70 bg-[linear-gradient(180deg,rgba(239,248,255,0.92),rgba(255,255,255,0.56))] shadow-[0_16px_40px_rgba(18,38,32,0.08)] md:block md:h-[220px] xl:h-[280px] xl:rounded-[2rem] xl:shadow-[0_24px_60px_rgba(18,38,32,0.08)]">
-                    <div className="absolute inset-x-4 top-4 z-[2] rounded-full bg-white/75 px-4 py-2 text-center text-[0.64rem] font-semibold uppercase tracking-[0.18em] text-staps-ink/45 backdrop-blur md:inset-x-6 md:top-6 md:text-[0.68rem] md:tracking-[0.22em]">
-                      Campus shopper
-                    </div>
+                  <div className="relative overflow-hidden rounded-[1.7rem] border border-white/70 bg-[linear-gradient(180deg,rgba(239,248,255,0.92),rgba(255,255,255,0.56))] shadow-[0_16px_40px_rgba(18,38,32,0.08)] h-[260px] sm:h-[320px] md:h-[240px] xl:h-[280px] xl:rounded-[2rem] xl:shadow-[0_24px_60px_rgba(18,38,32,0.08)]">
                     <div className="absolute inset-0 bg-[radial-gradient(circle_at_20%_20%,rgba(132,95,255,0.16),transparent_34%),radial-gradient(circle_at_80%_28%,rgba(82,196,168,0.18),transparent_30%),radial-gradient(circle_at_50%_100%,rgba(255,198,92,0.14),transparent_28%)]" />
                     <img
                       src={heroShopperImage}

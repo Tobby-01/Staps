@@ -50,6 +50,11 @@ const vendorSchema = new mongoose.Schema(
     },
     registrationReference: String,
     registrationPaidAt: Date,
+    brandingLocked: {
+      type: Boolean,
+      default: false,
+    },
+    brandingUpdatedAt: Date,
   },
   { timestamps: true },
 );
