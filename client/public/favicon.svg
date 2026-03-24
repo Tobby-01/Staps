@@ -1,0 +1,16 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-labelledby="faviconTitle">
+  <title id="faviconTitle">STAPS favicon</title>
+  <defs>
+    <linearGradient id="stapsGradient" x1="8" x2="56" y1="8" y2="56" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#6f54ef" />
+      <stop offset="0.55" stop-color="#8ba7ff" />
+      <stop offset="1" stop-color="#6dddc2" />
+    </linearGradient>
+  </defs>
+  <rect width="64" height="64" rx="18" fill="#f5f8ef" />
+  <rect x="5" y="5" width="54" height="54" rx="15" fill="url(#stapsGradient)" />
+  <path
+    fill="#ffffff"
+    d="M20.547 17.5h24.95c1.19 0 2.154.964 2.154 2.154v2.313H29.012c-2.602 0-4.714 2.11-4.714 4.713 0 2.602 2.112 4.712 4.714 4.712h8.218c1.173 0 2.126.954 2.126 2.127 0 1.172-.953 2.126-2.126 2.126H16.35v-2.313h18.662c2.602 0 4.713-2.111 4.713-4.713 0-2.603-2.111-4.713-4.713-4.713h-8.219c-1.172 0-2.126-.953-2.126-2.126 0-1.173.954-2.127 2.126-2.127h20.858v-2.22c0-1.19-.964-2.154-2.154-2.154h-24.95c-1.19 0-2.154.964-2.154 2.154v24.692c0 1.19.964 2.154 2.154 2.154h2.567v4.5h-2.567c-3.676 0-6.654-2.978-6.654-6.654V24.154c0-3.676 2.978-6.654 6.654-6.654Z"
+  />
+</svg>
