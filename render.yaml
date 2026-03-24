@@ -25,13 +25,13 @@ services:
       - key: COOKIE_NAME
         value: staps_token
       - key: SMTP_HOST
-        sync: false
+        value: smtp.resend.com
       - key: SMTP_PORT
         value: 465
       - key: SMTP_SECURE
         value: "true"
       - key: SMTP_USER
-        sync: false
+        value: resend
       - key: SMTP_PASS
         sync: false
       - key: MAIL_FROM
