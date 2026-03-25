@@ -39,7 +39,9 @@ export const ProductCard = ({ product, featured = false }) => {
 
   const renderQuantityControl = ({ featuredMode = false, mobile = false } = {}) => (
     <div
-      className={`flex items-center gap-2 rounded-2xl p-1.5 ${
+      className={`grid items-center rounded-2xl ${
+        mobile ? "grid-cols-[2.5rem_minmax(0,1fr)_2.5rem] gap-1.5 p-1" : "grid-cols-[auto_minmax(0,1fr)_auto] gap-2 p-1.5"
+      } ${
         featuredMode
           ? "bg-white text-[#5a49d6]"
           : mobile
@@ -59,13 +61,15 @@ export const ProductCard = ({ product, featured = false }) => {
       </button>
       <div className="min-w-0 flex-1 text-center">
         <p
-          className={`text-[0.62rem] font-bold uppercase tracking-[0.2em] ${
+          className={`font-bold uppercase ${
+            mobile ? "text-[0.58rem] tracking-[0.16em]" : "text-[0.62rem] tracking-[0.2em]"
+          } ${
             featuredMode ? "text-[#7c68ee]" : "text-staps-ink/45"
           }`}
         >
           In cart
         </p>
-        <p className="text-sm font-semibold">
+        <p className={mobile ? "text-[0.86rem] font-semibold leading-tight" : "text-sm font-semibold"}>
           {cartQuantity} item{cartQuantity === 1 ? "" : "s"}
         </p>
       </div>

@@ -230,7 +230,7 @@
   }
 
   .glass-mobile-toolbar {
-    padding: 0.35rem;
+    padding: 0.28rem;
     border: 1px solid rgba(255, 255, 255, 0.38);
     border-radius: 1.35rem;
     background:
@@ -337,8 +337,8 @@
   }
 
   .mobile-navbar-brand {
-    font-size: 3rem;
-    line-height: 0.92;
+    font-size: clamp(1.95rem, 8vw, 2.45rem);
+    line-height: 0.94;
   }
 
   .mobile-navbar-search {

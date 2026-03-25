@@ -65,6 +65,9 @@ export const Navbar = ({ search, setSearch, requestSearchResults }) => {
   const mobileGlassLink = "glass-mobile-link text-staps-ink/85";
   const mobileGlassCta = "glass-mobile-link glass-mobile-link-accent";
   const utilityCountLabel = (value) => (value > 99 ? "99+" : value);
+  const utilityBadgeClass =
+    "absolute -right-1 -top-1 inline-flex min-w-[1.15rem] items-center justify-center rounded-full bg-[#ff4d5f] px-1.5 py-0.5 text-[0.62rem] font-bold leading-none text-white";
+  const mobileToolbarIconSize = "h-9 w-9 sm:h-10 sm:w-10";
   const showActivityIcons = Boolean(user && user.role !== "admin");
   const messagesPath = `${dashboardPath}#messages`;
   const notificationsPath = `${dashboardPath}#notifications`;
@@ -151,7 +154,7 @@ export const Navbar = ({ search, setSearch, requestSearchResults }) => {
   return (
     <header className="z-40 px-2.5 pt-2.5 md:sticky md:top-0 sm:px-4 sm:pt-4">
       <div className="glass-navbar mobile-navbar-shell mx-auto max-w-7xl rounded-[1.7rem] px-3 py-2.5 md:grid md:grid-cols-[auto_minmax(0,1fr)_auto] md:items-center md:gap-5 md:rounded-[2rem] md:px-5 md:py-4">
-        <div className="mobile-navbar-top flex items-center justify-between gap-2.5 md:justify-start md:gap-4">
+        <div className="mobile-navbar-top flex items-center justify-between gap-2 md:justify-start md:gap-4">
           <Link
             to="/"
             className="mobile-navbar-brand font-display text-[1.45rem] font-extrabold tracking-tight leading-none text-staps-ink sm:text-2xl"
@@ -162,11 +165,11 @@ export const Navbar = ({ search, setSearch, requestSearchResults }) => {
           <span className="glass-chip hidden text-xs font-semibold text-[#5144c7] md:inline-flex">
             Campus marketplace
           </span>
-          <div className="glass-mobile-toolbar flex items-center gap-1.5 md:hidden">
+          <div className="glass-mobile-toolbar flex items-center gap-0.5 sm:gap-1 md:hidden">
             <Link
               to="/"
               aria-label="Go home"
-              className="glass-icon-plain inline-flex h-10 w-10 items-center justify-center text-staps-ink"
+              className={`glass-icon-plain inline-flex ${mobileToolbarIconSize} shrink-0 items-center justify-center text-staps-ink`}
               onClick={closeMobileMenu}
               title="Home"
             >
@@ -187,15 +190,47 @@ export const Navbar = ({ search, setSearch, requestSearchResults }) => {
             {!isVendorAccount ? (
               <Link
                 to="/cart"
-                className="glass-icon-plain relative inline-flex h-10 w-10 items-center justify-center text-staps-ink"
+                className={`glass-icon-plain relative inline-flex ${mobileToolbarIconSize} shrink-0 items-center justify-center text-staps-ink`}
                 aria-label="Open cart"
                 onClick={closeMobileMenu}
                 title="Cart"
               >
                 <ShoppingCartIcon className="h-5 w-5" />
                 {count ? (
-                  <span className="absolute -right-1 -top-1 inline-flex min-w-[1.15rem] items-center justify-center rounded-full bg-[#ff4d5f] px-1.5 py-0.5 text-[0.62rem] font-bold leading-none text-white">
+                  <span className={utilityBadgeClass}>
                     {utilityCountLabel(count)}
+                  </span>
+                ) : null}
+              </Link>
+            ) : null}
+            {showActivityIcons ? (
+              <Link
+                to={messagesPath}
+                className={`glass-icon-plain relative inline-flex ${mobileToolbarIconSize} shrink-0 items-center justify-center text-staps-ink`}
+                aria-label="Open messages"
+                onClick={closeMobileMenu}
+                title="Messages"
+              >
+                <ChatBubbleLeftRightIcon className="h-5 w-5" />
+                {unreadMessages ? (
+                  <span className={utilityBadgeClass}>
+                    {utilityCountLabel(unreadMessages)}
+                  </span>
+                ) : null}
+              </Link>
+            ) : null}
+            {showActivityIcons ? (
+              <Link
+                to={notificationsPath}
+                className={`glass-icon-plain relative inline-flex ${mobileToolbarIconSize} shrink-0 items-center justify-center text-staps-ink`}
+                aria-label="Open notifications"
+                onClick={closeMobileMenu}
+                title="Notifications"
+              >
+                <BellIcon className="h-5 w-5" />
+                {unreadNotifications ? (
+                  <span className={utilityBadgeClass}>
+                    {utilityCountLabel(unreadNotifications)}
                   </span>
                 ) : null}
               </Link>
@@ -203,7 +238,7 @@ export const Navbar = ({ search, setSearch, requestSearchResults }) => {
             <button
               type="button"
               onClick={() => setMobileMenuOpen((current) => !current)}
-              className="glass-icon-button glass-mobile-toolbar-button inline-flex h-10 w-10 items-center justify-center"
+              className={`glass-icon-button glass-mobile-toolbar-button inline-flex ${mobileToolbarIconSize} shrink-0 items-center justify-center`}
               aria-label={mobileMenuOpen ? "Close menu" : "Open menu"}
               aria-expanded={mobileMenuOpen}
             >
@@ -274,7 +309,7 @@ export const Navbar = ({ search, setSearch, requestSearchResults }) => {
               >
                 <ChatBubbleLeftRightIcon className="h-5 w-5" />
                 {unreadMessages ? (
-                  <span className="absolute -right-1 -top-1 inline-flex min-w-[1.15rem] items-center justify-center rounded-full bg-[#ff4d5f] px-1.5 py-0.5 text-[0.62rem] font-bold leading-none text-white">
+                  <span className={utilityBadgeClass}>
                     {utilityCountLabel(unreadMessages)}
                   </span>
                 ) : null}
@@ -287,7 +322,7 @@ export const Navbar = ({ search, setSearch, requestSearchResults }) => {
               >
                 <BellIcon className="h-5 w-5" />
                 {unreadNotifications ? (
-                  <span className="absolute -right-1 -top-1 inline-flex min-w-[1.15rem] items-center justify-center rounded-full bg-[#ff4d5f] px-1.5 py-0.5 text-[0.62rem] font-bold leading-none text-white">
+                  <span className={utilityBadgeClass}>
                     {utilityCountLabel(unreadNotifications)}
                   </span>
                 ) : null}
