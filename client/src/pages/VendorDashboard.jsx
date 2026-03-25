@@ -473,13 +473,13 @@ export const VendorDashboard = () => {
     { label: "Verification", value: profile?.verified ? "Approved" : "Pending review" },
     { label: "Registration fee", value: profile?.paymentStatus || "pending" },
     { label: "Orders", value: String(orders.length) },
-    { label: "Secured earnings", value: `NGN ${securedEarnings.toLocaleString()}`, span: "col-span-2 lg:col-span-1" },
-    { label: "Released earnings", value: `NGN ${earnings.toLocaleString()}`, span: "col-span-2 lg:col-span-1" },
+    { label: "Secured earnings", value: `NGN ${securedEarnings.toLocaleString()}`, span: "col-span-2 xl:col-span-1" },
+    { label: "Released earnings", value: `NGN ${earnings.toLocaleString()}`, span: "col-span-2 xl:col-span-1" },
   ];
 
   return (
     <div className="space-y-6">
-      <section className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-5 lg:gap-5">
+      <section className="grid grid-cols-2 gap-3 sm:gap-4 xl:grid-cols-5 xl:gap-5">
         {summaryCards.map(({ label, value, span = "" }) => (
           <div key={label} className={`surface-card min-w-0 p-4 sm:p-5 ${span}`.trim()}>
             <p className="text-xs text-staps-ink/55 sm:text-sm">{label}</p>
@@ -607,7 +607,7 @@ export const VendorDashboard = () => {
         </div>
       </section>
 
-      <section className="grid gap-6 lg:grid-cols-[0.95fr_1.05fr]">
+      <section className="grid gap-6 xl:grid-cols-[0.95fr_1.05fr]">
         <form onSubmit={createProduct} className="surface-card p-6">
           <p className="text-sm font-bold uppercase tracking-[0.25em] text-staps-orange">
             Product studio
