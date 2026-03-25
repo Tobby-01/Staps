@@ -469,20 +469,23 @@ export const VendorDashboard = () => {
     .join("")
     .slice(0, 2)
     .toUpperCase();
+  const summaryCards = [
+    { label: "Verification", value: profile?.verified ? "Approved" : "Pending review" },
+    { label: "Registration fee", value: profile?.paymentStatus || "pending" },
+    { label: "Orders", value: String(orders.length) },
+    { label: "Secured earnings", value: `NGN ${securedEarnings.toLocaleString()}`, span: "col-span-2 lg:col-span-1" },
+    { label: "Released earnings", value: `NGN ${earnings.toLocaleString()}`, span: "col-span-2 lg:col-span-1" },
+  ];
 
   return (
     <div className="space-y-6">
-      <section className="grid gap-5 lg:grid-cols-5">
-        {[
-          ["Verification", profile?.verified ? "Approved" : "Pending review"],
-          ["Registration fee", profile?.paymentStatus || "pending"],
-          ["Orders", String(orders.length)],
-          ["Secured earnings", `NGN ${securedEarnings.toLocaleString()}`],
-          ["Released earnings", `NGN ${earnings.toLocaleString()}`],
-        ].map(([label, value]) => (
-          <div key={label} className="surface-card p-5">
-            <p className="text-sm text-staps-ink/55">{label}</p>
-            <p className="mt-3 font-display text-2xl font-extrabold">{value}</p>
+      <section className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-5 lg:gap-5">
+        {summaryCards.map(({ label, value, span = "" }) => (
+          <div key={label} className={`surface-card min-w-0 p-4 sm:p-5 ${span}`.trim()}>
+            <p className="text-xs text-staps-ink/55 sm:text-sm">{label}</p>
+            <p className="mt-2 break-words font-display text-[1.55rem] font-extrabold leading-tight sm:mt-3 sm:text-2xl">
+              {value}
+            </p>
           </div>
         ))}
       </section>
@@ -541,7 +544,7 @@ export const VendorDashboard = () => {
           </div>
         </div>
 
-        <form onSubmit={saveStoreBranding} className="mt-6 grid gap-4 lg:grid-cols-[minmax(0,1fr)_240px]">
+        <form onSubmit={saveStoreBranding} className="mt-6 grid gap-4">
           <div className="grid gap-4">
             <input
               className="field"
@@ -577,31 +580,8 @@ export const VendorDashboard = () => {
             </p>
           </div>
 
-          <div className="rounded-[1.6rem] bg-[#f8f9fd] p-4">
-            <p className="text-xs font-semibold uppercase tracking-[0.14em] text-staps-ink/45">
-              Preview
-            </p>
-            <div className="mt-4 flex flex-col items-center gap-3 text-center">
-              {storeIdentityImage ? (
-                <img
-                  src={storeIdentityImage}
-                  alt={storeIdentityLabel}
-                  className="h-28 w-28 rounded-[1.8rem] object-cover"
-                />
-              ) : (
-                <div className="flex h-28 w-28 items-center justify-center rounded-[1.8rem] bg-[#eef2ff] font-display text-3xl font-bold text-[#5a49d6]">
-                  {storeIdentityInitials || "ST"}
-                </div>
-              )}
-              <div>
-                <p className="font-semibold text-staps-ink">{storeIdentityLabel}</p>
-                <p className="text-sm text-staps-ink/55">Storefront preview</p>
-              </div>
-            </div>
-          </div>
-
           <button
-            className="primary-button lg:col-span-2"
+            className="primary-button"
             type="submit"
             disabled={brandingSaving}
           >
