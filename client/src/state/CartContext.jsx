@@ -1,4 +1,5 @@
-import { createContext, useContext, useEffect, useState } from "react";
+import { createContext, useContext, useEffect, useRef, useState } from "react";
+import { Link } from "react-router-dom";
 
 import {
   getCartItemSubtotal,
@@ -21,8 +22,55 @@ const matchesItem = (left, right) => {
   return leftKeys.some((key) => rightKeys.includes(key));
 };
 
+const addItemToList = (current, product) => {
+  const productKey = getPrimaryKey(product);
+  const existing = current.find((item) => matchesItem(item, product));
+
+  if (existing) {
+    return current.map((item) =>
+      matchesItem(item, existing)
+        ? { ...item, quantity: item.quantity + 1 }
+        : item,
+    );
+  }
+
+  return [...current, { ...product, cartKey: productKey, quantity: 1 }];
+};
+
+const removeItemFromList = (current, productId) =>
+  current.filter((item) => !getItemKeys(item).includes(String(productId)));
+
+const updateItemQuantityInList = (current, productId, quantity) => {
+  const nextQuantity = Math.max(1, Number(quantity) || 1);
+
+  return current.map((item) =>
+    getItemKeys(item).includes(String(productId))
+      ? { ...item, quantity: nextQuantity }
+      : item,
+  );
+};
+
+const decrementItemInList = (current, product) => {
+  const existing = current.find((item) => matchesItem(item, product));
+  if (!existing) {
+    return current;
+  }
+
+  if (existing.quantity <= 1) {
+    return current.filter((item) => !matchesItem(item, existing));
+  }
+
+  return current.map((item) =>
+    matchesItem(item, existing)
+      ? { ...item, quantity: item.quantity - 1 }
+      : item,
+  );
+};
+
 export const CartProvider = ({ children }) => {
   const [items, setItems] = useState([]);
+  const [cartNotice, setCartNotice] = useState(null);
+  const itemsRef = useRef([]);
   const subtotal = items.reduce((sum, item) => sum + getCartItemSubtotal(item), 0);
   const deliveryTotal = items.reduce((sum, item) => sum + getProductDeliveryFee(item), 0);
   const grandTotal = subtotal + deliveryTotal;
@@ -30,48 +78,66 @@ export const CartProvider = ({ children }) => {
   useEffect(() => {
     const saved = localStorage.getItem(storageKey);
     if (saved) {
-      setItems(JSON.parse(saved));
+      const parsedItems = JSON.parse(saved);
+      itemsRef.current = parsedItems;
+      setItems(parsedItems);
     }
   }, []);
 
   useEffect(() => {
+    itemsRef.current = items;
     localStorage.setItem(storageKey, JSON.stringify(items));
   }, [items]);
 
+  useEffect(() => {
+    if (!cartNotice) {
+      return undefined;
+    }
+
+    const timeoutId = window.setTimeout(() => {
+      setCartNotice(null);
+    }, 2400);
+
+    return () => window.clearTimeout(timeoutId);
+  }, [cartNotice]);
+
   const addToCart = (product) => {
-    setItems((current) => {
-      const productKey = getPrimaryKey(product);
-      const existing = current.find((item) => matchesItem(item, product));
+    const nextItems = addItemToList(itemsRef.current, product);
+    const nextItem = nextItems.find((item) => matchesItem(item, product));
 
-      if (existing) {
-        return current.map((item) =>
-          matchesItem(item, existing)
-            ? { ...item, quantity: item.quantity + 1 }
-            : item,
-        );
-      }
-
-      return [...current, { ...product, cartKey: productKey, quantity: 1 }];
+    itemsRef.current = nextItems;
+    setItems(nextItems);
+    setCartNotice({
+      name: product?.name || "Product",
+      quantity: nextItem?.quantity || 1,
     });
   };
 
   const removeFromCart = (productId) => {
-    setItems((current) =>
-      current.filter((item) => !getItemKeys(item).includes(String(productId))),
-    );
+    const nextItems = removeItemFromList(itemsRef.current, productId);
+    itemsRef.current = nextItems;
+    setItems(nextItems);
   };
 
   const updateQuantity = (productId, quantity) => {
-    setItems((current) =>
-      current.map((item) =>
-        getItemKeys(item).includes(String(productId))
-          ? { ...item, quantity: Math.max(1, quantity || 1) }
-          : item,
-      ),
-    );
+    const nextItems = updateItemQuantityInList(itemsRef.current, productId, quantity);
+    itemsRef.current = nextItems;
+    setItems(nextItems);
   };
 
-  const clearCart = () => setItems([]);
+  const decrementItem = (product) => {
+    const nextItems = decrementItemInList(itemsRef.current, product);
+    itemsRef.current = nextItems;
+    setItems(nextItems);
+  };
+
+  const getItemQuantity = (product) =>
+    items.find((item) => matchesItem(item, product))?.quantity || 0;
+
+  const clearCart = () => {
+    itemsRef.current = [];
+    setItems([]);
+  };
 
   const value = {
     items,
@@ -80,12 +146,49 @@ export const CartProvider = ({ children }) => {
     deliveryTotal,
     grandTotal,
     addToCart,
+    decrementItem,
     removeFromCart,
     updateQuantity,
+    getItemQuantity,
     clearCart,
   };
 
-  return <CartContext.Provider value={value}>{children}</CartContext.Provider>;
+  return (
+    <CartContext.Provider value={value}>
+      {children}
+      {cartNotice ? (
+        <div className="pointer-events-none fixed inset-x-4 bottom-4 z-[90] flex justify-center sm:justify-end">
+          <div
+            aria-live="polite"
+            className="pointer-events-auto w-full max-w-sm rounded-[1.6rem] border border-white/70 bg-white/95 p-4 shadow-[0_24px_60px_rgba(18,38,32,0.16)] backdrop-blur"
+          >
+            <p className="text-[0.68rem] font-bold uppercase tracking-[0.22em] text-[#6e54ef]">
+              Added to cart
+            </p>
+            <p className="mt-2 text-sm font-semibold text-staps-ink">{cartNotice.name}</p>
+            <p className="mt-1 text-sm text-staps-ink/60">
+              You now have {cartNotice.quantity} in your cart.
+            </p>
+            <div className="mt-3 flex items-center gap-3">
+              <Link
+                to="/cart"
+                className="inline-flex items-center justify-center rounded-full bg-[#6e54ef] px-4 py-2 text-sm font-semibold text-white transition hover:bg-[#5a49d6]"
+              >
+                View cart
+              </Link>
+              <button
+                type="button"
+                onClick={() => setCartNotice(null)}
+                className="text-sm font-semibold text-staps-ink/55 transition hover:text-staps-ink"
+              >
+                Keep shopping
+              </button>
+            </div>
+          </div>
+        </div>
+      ) : null}
+    </CartContext.Provider>
+  );
 };
 
 export const useCart = () => {

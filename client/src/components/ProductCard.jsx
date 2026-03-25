@@ -1,3 +1,4 @@
+import { MinusSmallIcon, PlusSmallIcon } from "@heroicons/react/24/outline";
 import { HeartIcon as HeartOutlineIcon } from "@heroicons/react/24/outline";
 import { HeartIcon as HeartSolidIcon } from "@heroicons/react/24/solid";
 import { Link } from "react-router-dom";
@@ -16,10 +17,11 @@ import { VerifiedVendorBadge } from "./VerifiedVendorBadge.jsx";
 
 export const ProductCard = ({ product, featured = false }) => {
   const { user } = useAuth();
-  const { addToCart } = useCart();
+  const { addToCart, decrementItem, getItemQuantity } = useCart();
   const { toggleFavorite, isFavorite } = useFavorites();
   const isVendorAccount = user?.role === "vendor";
   const previewImage = resolveAssetUrl(product.image || product.images?.[0]);
+  const cartQuantity = getItemQuantity(product);
   const favorite = isFavorite(product);
   const basePrice = getProductBasePrice(product);
   const activePrice = getProductActivePrice(product);
@@ -34,6 +36,55 @@ export const ProductCard = ({ product, featured = false }) => {
     Number.isFinite(createdAtMs) &&
     Date.now() >= createdAtMs &&
     Date.now() - createdAtMs <= 10 * 60 * 1000;
+
+  const renderQuantityControl = ({ featuredMode = false, mobile = false } = {}) => (
+    <div
+      className={`flex items-center gap-2 rounded-2xl p-1.5 ${
+        featuredMode
+          ? "bg-white text-[#5a49d6]"
+          : mobile
+            ? "border border-[#d9ddff] bg-[#eef0ff]"
+            : "border border-staps-ink/10 bg-white text-staps-ink"
+      }`}
+    >
+      <button
+        type="button"
+        onClick={() => decrementItem(product)}
+        className={`inline-flex h-10 w-10 items-center justify-center rounded-[1rem] transition ${
+          featuredMode ? "bg-[#f1edff] text-[#5a49d6]" : "bg-white text-staps-ink shadow-sm"
+        }`}
+        aria-label={`Remove one ${product.name} from cart`}
+      >
+        <MinusSmallIcon className="h-5 w-5" />
+      </button>
+      <div className="min-w-0 flex-1 text-center">
+        <p
+          className={`text-[0.62rem] font-bold uppercase tracking-[0.2em] ${
+            featuredMode ? "text-[#7c68ee]" : "text-staps-ink/45"
+          }`}
+        >
+          In cart
+        </p>
+        <p className="text-sm font-semibold">
+          {cartQuantity} item{cartQuantity === 1 ? "" : "s"}
+        </p>
+      </div>
+      <button
+        type="button"
+        onClick={() => addToCart(product)}
+        className={`inline-flex h-10 w-10 items-center justify-center rounded-[1rem] transition ${
+          featuredMode
+            ? "bg-[#5a49d6] text-white"
+            : mobile
+              ? "bg-[#6e54ef] text-white shadow-[0_10px_20px_rgba(110,84,239,0.22)]"
+              : "bg-[#6e54ef] text-white shadow-[0_10px_20px_rgba(110,84,239,0.22)]"
+        }`}
+        aria-label={`Add one more ${product.name} to cart`}
+      >
+        <PlusSmallIcon className="h-5 w-5" />
+      </button>
+    </div>
+  );
 
   return (
     <article
@@ -130,13 +181,17 @@ export const ProductCard = ({ product, featured = false }) => {
             Shop now
           </Link>
         ) : (
-          <button
-            type="button"
-            onClick={() => addToCart(product)}
-            className="w-full rounded-[1rem] bg-gradient-to-r from-[#6e54ef] to-[#9186ff] px-3 py-2.5 text-sm font-semibold text-white shadow-[0_12px_24px_rgba(110,84,239,0.24)] transition hover:brightness-[1.03]"
-          >
-            Add to cart
-          </button>
+          cartQuantity ? (
+            renderQuantityControl({ mobile: true })
+          ) : (
+            <button
+              type="button"
+              onClick={() => addToCart(product)}
+              className="w-full rounded-[1rem] bg-gradient-to-r from-[#6e54ef] to-[#9186ff] px-3 py-2.5 text-sm font-semibold text-white shadow-[0_12px_24px_rgba(110,84,239,0.24)] transition hover:brightness-[1.03]"
+            >
+              Add to cart
+            </button>
+          )
         )}
       </div>
 
@@ -218,17 +273,21 @@ export const ProductCard = ({ product, featured = false }) => {
             </div>
           ) : (
             <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
-              <button
-                type="button"
-                onClick={() => addToCart(product)}
-                className={`w-full rounded-2xl px-4 py-3 text-sm font-semibold transition-all duration-300 ${
-                  featured
-                    ? "bg-white text-[#5a49d6] hover:bg-white/90"
-                    : "border border-staps-ink/10 bg-white text-staps-ink hover:shadow-md"
-                }`}
-              >
-                Add to cart
-              </button>
+              {cartQuantity ? (
+                renderQuantityControl({ featuredMode: featured })
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => addToCart(product)}
+                  className={`w-full rounded-2xl px-4 py-3 text-sm font-semibold transition-all duration-300 ${
+                    featured
+                      ? "bg-white text-[#5a49d6] hover:bg-white/90"
+                      : "border border-staps-ink/10 bg-white text-staps-ink hover:shadow-md"
+                  }`}
+                >
+                  Add to cart
+                </button>
+              )}
               <Link
                 to="/cart"
                 className={`inline-flex w-full items-center justify-center rounded-2xl px-4 py-3 text-sm font-semibold transition-all duration-300 ${

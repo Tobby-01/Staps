@@ -298,31 +298,31 @@ export const HomePage = () => {
           </div>
 
           <aside className="order-2 space-y-3.5 xl:order-1 xl:space-y-4">
-            <div className="relative overflow-hidden rounded-[1.6rem] border border-white/40 bg-[linear-gradient(145deg,#14213f_0%,#3f3f9d_48%,#79a4ff_100%)] p-5 text-white shadow-[0_28px_65px_rgba(39,48,99,0.32)] md:rounded-[1.9rem] md:p-6">
+            <div className="relative overflow-hidden rounded-[1.6rem] border border-white/40 bg-[linear-gradient(145deg,#14213f_0%,#3f3f9d_48%,#79a4ff_100%)] p-5 text-white shadow-[0_28px_65px_rgba(39,48,99,0.32)] md:rounded-[1.8rem] md:p-5">
               <div className="absolute -right-10 top-0 h-36 w-36 rounded-full bg-white/14 blur-3xl" />
               <div className="absolute -left-8 bottom-0 h-28 w-28 rounded-full bg-[#7de5d0]/20 blur-3xl" />
-              <div className="relative flex items-start justify-between gap-3">
-                <div className="max-w-[14rem]">
+              <div className="relative flex flex-col items-start gap-3">
+                <div className="max-w-full">
                   <span className="inline-flex items-center gap-2 rounded-full border border-white/18 bg-white/12 px-3 py-1.5 text-[0.68rem] font-bold uppercase tracking-[0.18em] text-white/84 backdrop-blur">
                     <ArrowTrendingUpIcon className="h-3.5 w-3.5" />
                     Market intel
                   </span>
-                  <p className="mt-4 font-display text-[1.5rem] font-bold leading-none md:text-[2rem]">
+                  <p className="mt-3.5 font-display text-[1.4rem] font-bold leading-none md:text-[1.68rem]">
                     Marketplace pulse
                   </p>
-                  <p className="mt-2 text-sm leading-6 text-white/74">
+                  <p className="mt-2 text-sm leading-5 text-white/74">
                     A refined live snapshot of what is moving across STAPS right now.
                   </p>
                 </div>
                 <Link
                   to="/categories/deals"
-                  className="inline-flex items-center gap-1 rounded-full border border-white/18 bg-white/12 px-4 py-2 text-xs font-semibold text-white/92 backdrop-blur transition hover:bg-white/18"
+                  className="inline-flex shrink-0 items-center gap-1 rounded-full border border-white/18 bg-white/12 px-3.5 py-1.5 text-[0.72rem] font-semibold text-white/92 backdrop-blur transition hover:bg-white/18"
                 >
                   View deals
                   <ArrowUpRightIcon className="h-3.5 w-3.5" />
                 </Link>
               </div>
-              <div className="relative mt-5 grid grid-cols-2 gap-3">
+              <div className="relative mt-4 grid grid-cols-2 gap-2.5">
                 {[
                   ["Listings", String(marketplacePulse.listings)],
                   ["Stores", String(marketplacePulse.stores)],
@@ -331,12 +331,12 @@ export const HomePage = () => {
                 ].map(([label, value]) => (
                   <div
                     key={label}
-                    className="rounded-[1.25rem] border border-white/16 bg-white/12 px-4 py-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.16)] backdrop-blur-xl"
+                    className="rounded-[1.15rem] border border-white/16 bg-white/12 px-3.5 py-3.5 shadow-[inset_0_1px_0_rgba(255,255,255,0.16)] backdrop-blur-xl"
                   >
-                    <p className="text-[0.7rem] font-bold uppercase tracking-[0.18em] text-white/58">
+                    <p className="text-[0.64rem] font-bold uppercase tracking-[0.16em] text-white/58">
                       {label}
                     </p>
-                    <p className="mt-2 font-display text-[1.55rem] font-extrabold leading-none text-white">
+                    <p className="mt-2 font-display text-[1.35rem] font-extrabold leading-none text-white md:text-[1.45rem]">
                       {value}
                     </p>
                   </div>
@@ -344,39 +344,39 @@ export const HomePage = () => {
               </div>
             </div>
 
-            <div className="relative overflow-hidden rounded-[1.6rem] border border-white/70 bg-[linear-gradient(145deg,rgba(255,255,255,0.98),rgba(248,243,255,0.95),rgba(237,246,255,0.98))] p-5 shadow-[0_24px_58px_rgba(18,38,32,0.08)] md:rounded-[1.9rem] md:p-6">
+            <div className="relative overflow-hidden rounded-[1.6rem] border border-white/70 bg-[linear-gradient(145deg,rgba(255,255,255,0.98),rgba(248,243,255,0.95),rgba(237,246,255,0.98))] p-5 shadow-[0_24px_58px_rgba(18,38,32,0.08)] md:rounded-[1.8rem] md:p-5">
               <div className="absolute right-0 top-0 h-36 w-36 bg-[radial-gradient(circle,rgba(100,77,240,0.16),transparent_65%)]" />
               <div className="absolute bottom-0 left-0 h-32 w-32 bg-[radial-gradient(circle,rgba(82,196,168,0.16),transparent_64%)]" />
-              <div className="relative flex items-start justify-between gap-3">
-                <div className="max-w-[14rem]">
+              <div className="relative flex flex-col items-start gap-3">
+                <div className="max-w-full">
                   <span className="inline-flex items-center gap-2 rounded-full bg-[#efeafe] px-3 py-1.5 text-[0.68rem] font-bold uppercase tracking-[0.18em] text-[#644df0]">
                     <SparklesIcon className="h-3.5 w-3.5" />
                     Curated now
                   </span>
-                  <p className="mt-4 font-display text-[1.5rem] font-bold leading-none text-staps-ink md:text-[2rem]">
+                  <p className="mt-3.5 font-display text-[1.4rem] font-bold leading-none text-staps-ink md:text-[1.68rem]">
                     Popular right now
                   </p>
-                  <p className="mt-2 text-sm leading-6 text-staps-ink/58">
+                  <p className="mt-2 text-sm leading-5 text-staps-ink/58">
                     Jump straight into the busiest categories and keep browsing momentum high.
                   </p>
                 </div>
                 <Link
                   to="/categories/all-categories"
-                  className="inline-flex items-center gap-1 rounded-full border border-[#ded8ff] bg-white/80 px-4 py-2 text-xs font-semibold text-[#644df0] shadow-sm transition hover:bg-white"
+                  className="inline-flex shrink-0 items-center gap-1 rounded-full border border-[#ded8ff] bg-white/80 px-3.5 py-1.5 text-[0.72rem] font-semibold text-[#644df0] shadow-sm transition hover:bg-white"
                 >
                   Browse all
                   <ArrowUpRightIcon className="h-3.5 w-3.5" />
                 </Link>
               </div>
-              <div className="relative mt-5 space-y-3">
+              <div className="relative mt-4 space-y-2.5">
                 {categoryHighlights.length ? (
                   categoryHighlights.map((category, index) => (
                     <Link
                       key={category.slug}
                       to={`/categories/${category.slug}`}
-                      className="group flex items-center gap-3 rounded-[1.28rem] border border-white/70 bg-white/80 px-4 py-3 shadow-[0_14px_28px_rgba(100,77,240,0.08)] backdrop-blur transition hover:-translate-y-0.5 hover:bg-white"
+                      className="group flex items-center gap-3 rounded-[1.18rem] border border-white/70 bg-white/80 px-3.5 py-2.5 shadow-[0_14px_28px_rgba(100,77,240,0.08)] backdrop-blur transition hover:-translate-y-0.5 hover:bg-white"
                     >
-                      <span className="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-[1rem] bg-gradient-to-br from-[#6e54ef] to-[#9aa7ff] font-display text-sm font-extrabold text-white shadow-[0_12px_24px_rgba(110,84,239,0.2)]">
+                      <span className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-[0.95rem] bg-gradient-to-br from-[#6e54ef] to-[#9aa7ff] font-display text-sm font-extrabold text-white shadow-[0_12px_24px_rgba(110,84,239,0.2)]">
                         {String(index + 1).padStart(2, "0")}
                       </span>
                       <div className="min-w-0 flex-1">

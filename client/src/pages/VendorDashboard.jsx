@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 
+import { SwipeableNotificationCard } from "../components/SwipeableNotificationCard.jsx";
 import { apiRequest, resolveAssetUrl } from "../lib/api.js";
 import { formatNaira } from "../lib/marketplace.js";
 
@@ -91,6 +92,7 @@ export const VendorDashboard = () => {
     accountNumber: "",
   });
   const [brandingSaving, setBrandingSaving] = useState(false);
+  const [deletingNotificationId, setDeletingNotificationId] = useState("");
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
   const sellingRestricted = ["suspended", "banned"].includes(profile?.sellingStatus);
@@ -327,6 +329,25 @@ export const VendorDashboard = () => {
     await apiRequest(`/api/orders/${orderId}/${action}`, { method: "PATCH" });
     setMessage(`Order updated: ${action}`);
     await loadDashboard();
+  };
+
+  const dismissNotification = async (notificationId) => {
+    const previousNotifications = notifications;
+
+    try {
+      setDeletingNotificationId(notificationId);
+      setNotifications((current) =>
+        current.filter((notification) => notification._id !== notificationId),
+      );
+      await apiRequest(`/api/notifications/${notificationId}`, {
+        method: "DELETE",
+      });
+    } catch (requestError) {
+      setNotifications(previousNotifications);
+      setError(requestError.message);
+    } finally {
+      setDeletingNotificationId("");
+    }
   };
 
   const delistProduct = async (productId, productName) => {
@@ -1012,25 +1033,21 @@ export const VendorDashboard = () => {
               Alerts
             </p>
             <h2 className="mt-2 font-display text-2xl font-extrabold">Notifications</h2>
+            <p className="mt-2 text-sm text-staps-ink/55">
+              Swipe left on any alert to remove it from your list.
+            </p>
             <div className="mt-5 space-y-3">
               {notifications.length ? (
                 notifications.map((notification) => (
-                  <div key={notification._id} className="rounded-2xl bg-staps-mist p-4">
-                    <div className="flex flex-wrap items-center justify-between gap-2">
-                      <p className="font-semibold">{notification.title}</p>
-                      {notification.metadata?.orderNumber ? (
-                        <span className="rounded-full bg-white px-3 py-1 text-xs font-semibold text-[#5a49d6]">
-                          {notification.metadata.orderNumber}
-                        </span>
-                      ) : null}
-                    </div>
-                    <p className="mt-1 text-sm text-staps-ink/65">{notification.message}</p>
-                    {formatNotificationTime(notification.createdAt) ? (
-                      <p className="mt-3 text-xs font-semibold uppercase tracking-[0.14em] text-staps-ink/45">
-                        {formatNotificationTime(notification.createdAt)}
-                      </p>
-                    ) : null}
-                  </div>
+                  <SwipeableNotificationCard
+                    key={notification._id}
+                    badge={notification.metadata?.orderNumber || ""}
+                    deleting={deletingNotificationId === notification._id}
+                    message={notification.message}
+                    onDelete={() => dismissNotification(notification._id)}
+                    timestamp={formatNotificationTime(notification.createdAt)}
+                    title={notification.title}
+                  />
                 ))
               ) : (
                 <p className="text-sm text-staps-ink/65">No new alerts yet.</p>

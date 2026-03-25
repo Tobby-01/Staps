@@ -76,7 +76,6 @@ export const Navbar = ({ search, setSearch, requestSearchResults }) => {
     ...(!isVendorAccount
       ? [
           { to: "/favorites", label: "Favourites", icon: HeartIcon },
-          { to: "/cart", label: `Cart (${count})`, icon: ShoppingCartIcon },
         ]
       : []),
     ...(user ? [{ to: dashboardPath, label: "Profile", icon: UserCircleIcon }] : []),
@@ -151,11 +150,11 @@ export const Navbar = ({ search, setSearch, requestSearchResults }) => {
 
   return (
     <header className="z-40 px-2.5 pt-2.5 md:sticky md:top-0 sm:px-4 sm:pt-4">
-      <div className="glass-navbar mobile-navbar-shell mx-auto max-w-7xl rounded-[1.7rem] px-4 py-3 md:grid md:grid-cols-[auto_minmax(0,1fr)_auto] md:items-center md:gap-5 md:rounded-[2rem] md:px-5 md:py-4">
-        <div className="mobile-navbar-top flex items-center justify-between gap-3 md:justify-start md:gap-4">
+      <div className="glass-navbar mobile-navbar-shell mx-auto max-w-7xl rounded-[1.7rem] px-3 py-2.5 md:grid md:grid-cols-[auto_minmax(0,1fr)_auto] md:items-center md:gap-5 md:rounded-[2rem] md:px-5 md:py-4">
+        <div className="mobile-navbar-top flex items-center justify-between gap-2.5 md:justify-start md:gap-4">
           <Link
             to="/"
-            className="mobile-navbar-brand font-display text-[1.95rem] font-extrabold tracking-tight text-staps-ink sm:text-2xl"
+            className="mobile-navbar-brand font-display text-[1.45rem] font-extrabold tracking-tight leading-none text-staps-ink sm:text-2xl"
             onClick={closeMobileMenu}
           >
             STAPS
@@ -163,41 +162,48 @@ export const Navbar = ({ search, setSearch, requestSearchResults }) => {
           <span className="glass-chip hidden text-xs font-semibold text-[#5144c7] md:inline-flex">
             Campus marketplace
           </span>
-          <div className="glass-mobile-toolbar flex items-center gap-2 md:hidden">
-            {showActivityIcons ? (
-              <>
-                <Link
-                  to={messagesPath}
-                  className="glass-icon-plain relative inline-flex h-11 w-11 items-center justify-center text-staps-ink"
-                  aria-label="Open messages"
-                  title="Messages"
-                >
-                  <ChatBubbleLeftRightIcon className="h-5 w-5" />
-                  {unreadMessages ? (
-                    <span className="absolute -right-1 -top-1 inline-flex min-w-[1.15rem] items-center justify-center rounded-full bg-[#ff4d5f] px-1.5 py-0.5 text-[0.62rem] font-bold leading-none text-white">
-                      {utilityCountLabel(unreadMessages)}
-                    </span>
-                  ) : null}
-                </Link>
-                <Link
-                  to={notificationsPath}
-                  className="glass-icon-plain relative inline-flex h-11 w-11 items-center justify-center text-staps-ink"
-                  aria-label="Open notifications"
-                  title="Notifications"
-                >
-                  <BellIcon className="h-5 w-5" />
-                  {unreadNotifications ? (
-                    <span className="absolute -right-1 -top-1 inline-flex min-w-[1.15rem] items-center justify-center rounded-full bg-[#ff4d5f] px-1.5 py-0.5 text-[0.62rem] font-bold leading-none text-white">
-                      {utilityCountLabel(unreadNotifications)}
-                    </span>
-                  ) : null}
-                </Link>
-              </>
+          <div className="glass-mobile-toolbar flex items-center gap-1.5 md:hidden">
+            <Link
+              to="/"
+              aria-label="Go home"
+              className="glass-icon-plain inline-flex h-10 w-10 items-center justify-center text-staps-ink"
+              onClick={closeMobileMenu}
+              title="Home"
+            >
+              <svg
+                aria-hidden="true"
+                viewBox="0 0 24 24"
+                className="h-5 w-5"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              >
+                <path d="M3 10.5 12 3l9 7.5" />
+                <path d="M5 9.5V20a1 1 0 0 0 1 1h4v-6h4v6h4a1 1 0 0 0 1-1V9.5" />
+              </svg>
+            </Link>
+            {!isVendorAccount ? (
+              <Link
+                to="/cart"
+                className="glass-icon-plain relative inline-flex h-10 w-10 items-center justify-center text-staps-ink"
+                aria-label="Open cart"
+                onClick={closeMobileMenu}
+                title="Cart"
+              >
+                <ShoppingCartIcon className="h-5 w-5" />
+                {count ? (
+                  <span className="absolute -right-1 -top-1 inline-flex min-w-[1.15rem] items-center justify-center rounded-full bg-[#ff4d5f] px-1.5 py-0.5 text-[0.62rem] font-bold leading-none text-white">
+                    {utilityCountLabel(count)}
+                  </span>
+                ) : null}
+              </Link>
             ) : null}
             <button
               type="button"
               onClick={() => setMobileMenuOpen((current) => !current)}
-              className="glass-icon-button glass-mobile-toolbar-button inline-flex h-11 w-11 items-center justify-center"
+              className="glass-icon-button glass-mobile-toolbar-button inline-flex h-10 w-10 items-center justify-center"
               aria-label={mobileMenuOpen ? "Close menu" : "Open menu"}
               aria-expanded={mobileMenuOpen}
             >
@@ -208,15 +214,15 @@ export const Navbar = ({ search, setSearch, requestSearchResults }) => {
 
         <form
           onSubmit={handleSearchSubmit}
-          className="mobile-navbar-search mt-3 grid min-w-0 grid-cols-[minmax(0,1fr)_auto] items-center gap-2.5 md:mt-0 md:flex md:gap-3"
+          className="mobile-navbar-search mx-auto mt-2.5 grid min-w-0 max-w-[20.5rem] grid-cols-[minmax(0,1fr)_auto] items-center gap-2 md:mx-0 md:mt-0 md:max-w-none md:flex md:gap-3"
         >
-          <div className="glass-search-shell glass-mobile-search-shell flex min-w-0 w-full items-center gap-2.5 px-3.5 py-2.5 md:gap-3 md:px-5 md:py-3">
+          <div className="glass-search-shell glass-mobile-search-shell flex min-w-0 w-full items-center gap-2 px-3 py-2 md:gap-3 md:px-5 md:py-3">
             <MagnifyingGlassIcon className="h-[1.05rem] w-[1.05rem] shrink-0 text-staps-ink/35" />
             <input
               value={search}
               onChange={(event) => setSearch(event.target.value)}
               placeholder="Search products, food, books..."
-              className="glass-search-input min-w-0 w-full bg-transparent text-[0.95rem] outline-none md:text-sm"
+              className="glass-search-input min-w-0 w-full bg-transparent text-[0.86rem] outline-none md:text-sm"
             />
             {search ? (
               <button
@@ -230,7 +236,7 @@ export const Navbar = ({ search, setSearch, requestSearchResults }) => {
           </div>
           <button
             type="submit"
-            className="glass-action-pill glass-action-pill-accent glass-mobile-search-trigger inline-flex h-11 w-11 shrink-0 items-center justify-center text-sm font-semibold text-staps-ink md:w-auto md:px-4"
+            className="glass-action-pill glass-action-pill-accent glass-mobile-search-trigger inline-flex h-10 w-10 shrink-0 items-center justify-center text-sm font-semibold text-staps-ink md:h-11 md:w-auto md:px-4"
           >
             <MagnifyingGlassIcon className="h-5 w-5 md:hidden" />
             <span className="hidden md:inline">Search</span>
@@ -345,31 +351,9 @@ export const Navbar = ({ search, setSearch, requestSearchResults }) => {
 
         {mobileMenuOpen && (
           <div className="glass-mobile-sheet mt-4 space-y-3 pt-4 md:hidden">
-            <div className="flex items-center gap-2">
-              <Link
-                to="/"
-                aria-label="Go home"
-                className="glass-icon-plain inline-flex h-11 w-11 shrink-0 items-center justify-center text-staps-ink"
-                onClick={closeMobileMenu}
-              >
-                <svg
-                  aria-hidden="true"
-                  viewBox="0 0 24 24"
-                  className="h-5 w-5"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="2"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                >
-                  <path d="M3 10.5 12 3l9 7.5" />
-                  <path d="M5 9.5V20a1 1 0 0 0 1 1h4v-6h4v6h4a1 1 0 0 0 1-1V9.5" />
-                </svg>
-              </Link>
-              <span className="glass-chip text-xs font-semibold text-[#5144c7]">
-                Campus marketplace
-              </span>
-            </div>
+            <span className="glass-chip text-xs font-semibold text-[#5144c7]">
+              Campus marketplace
+            </span>
 
             {mobileShortcutItems.length ? (
               <div className="-mx-1 flex gap-2 overflow-x-auto px-1 pb-1 text-sm font-semibold">
@@ -384,41 +368,6 @@ export const Navbar = ({ search, setSearch, requestSearchResults }) => {
                     <span>{label}</span>
                   </NavLink>
                 ))}
-              </div>
-            ) : null}
-
-            {showActivityIcons ? (
-              <div className="-mx-1 flex gap-2 overflow-x-auto px-1 pb-1 text-sm font-semibold">
-                <NavLink
-                  to={messagesPath}
-                  className="glass-mobile-link inline-flex min-w-[8.75rem] items-center justify-between gap-3 whitespace-nowrap px-4 py-3 text-staps-ink/85"
-                  onClick={closeMobileMenu}
-                >
-                  <span className="inline-flex items-center gap-2">
-                    <ChatBubbleLeftRightIcon className="h-5 w-5 shrink-0" />
-                    <span>Messages</span>
-                  </span>
-                  {unreadMessages ? (
-                    <span className="inline-flex min-w-[1.4rem] items-center justify-center rounded-full bg-[#ff4d5f] px-1.5 py-0.5 text-[0.68rem] font-bold leading-none text-white">
-                      {utilityCountLabel(unreadMessages)}
-                    </span>
-                  ) : null}
-                </NavLink>
-                <NavLink
-                  to={notificationsPath}
-                  className="glass-mobile-link inline-flex min-w-[8.75rem] items-center justify-between gap-3 whitespace-nowrap px-4 py-3 text-staps-ink/85"
-                  onClick={closeMobileMenu}
-                >
-                  <span className="inline-flex items-center gap-2">
-                    <BellIcon className="h-5 w-5 shrink-0" />
-                    <span>Alerts</span>
-                  </span>
-                  {unreadNotifications ? (
-                    <span className="inline-flex min-w-[1.4rem] items-center justify-center rounded-full bg-[#ff4d5f] px-1.5 py-0.5 text-[0.68rem] font-bold leading-none text-white">
-                      {utilityCountLabel(unreadNotifications)}
-                    </span>
-                  ) : null}
-                </NavLink>
               </div>
             ) : null}
 

@@ -1,10 +1,13 @@
+import { CameraIcon, StarIcon as StarOutlineIcon } from "@heroicons/react/24/outline";
+import { StarIcon as StarSolidIcon } from "@heroicons/react/24/solid";
 import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 
+import { SwipeableNotificationCard } from "../components/SwipeableNotificationCard.jsx";
 import { apiRequest, resolveAssetUrl } from "../lib/api.js";
 import { useAuth } from "../state/AuthContext.jsx";
 
-const supportEmail = "support@staps.app";
+const supportEmail = "stapdevs@gmail.com";
 const dashboardRefreshIntervalMs = 5000;
 const notificationTimeFormatter = new Intl.DateTimeFormat("en-NG", {
   dateStyle: "medium",
@@ -48,6 +51,7 @@ export const ShopperDashboard = () => {
     reason: "Order issue",
     details: "",
   });
+  const [deletingNotificationId, setDeletingNotificationId] = useState("");
 
   const loadDashboard = async ({ silent = false } = {}) => {
     try {
@@ -165,6 +169,38 @@ export const ShopperDashboard = () => {
     )}`;
   }, [complaintForm, selectedComplaintOrder, user]);
 
+  const renderRatingStars = (rating, { interactive = false, onSelect } = {}) => (
+    <div className="flex items-center gap-1.5">
+      {[1, 2, 3, 4, 5].map((value) => {
+        const active = value <= Number(rating || 0);
+        const Icon = active ? StarSolidIcon : StarOutlineIcon;
+
+        if (!interactive) {
+          return (
+            <Icon
+              key={value}
+              className={`h-5 w-5 ${active ? "text-[#f4b63d]" : "text-staps-ink/18"}`}
+            />
+          );
+        }
+
+        return (
+          <button
+            key={value}
+            type="button"
+            onClick={() => onSelect?.(value)}
+            className="rounded-full p-1 transition hover:scale-[1.04]"
+            aria-label={`Rate ${value} star${value === 1 ? "" : "s"}`}
+          >
+            <Icon
+              className={`h-7 w-7 ${active ? "text-[#f4b63d]" : "text-staps-ink/18"}`}
+            />
+          </button>
+        );
+      })}
+    </div>
+  );
+
   const confirmDelivery = async (orderId) => {
     try {
       setError("");
@@ -188,6 +224,25 @@ export const ShopperDashboard = () => {
       await loadDashboard();
     } catch (requestError) {
       setError(requestError.message);
+    }
+  };
+
+  const dismissNotification = async (notificationId) => {
+    const previousNotifications = notifications;
+
+    try {
+      setDeletingNotificationId(notificationId);
+      setNotifications((current) =>
+        current.filter((notification) => notification._id !== notificationId),
+      );
+      await apiRequest(`/api/notifications/${notificationId}`, {
+        method: "DELETE",
+      });
+    } catch (requestError) {
+      setNotifications(previousNotifications);
+      setError(requestError.message);
+    } finally {
+      setDeletingNotificationId("");
     }
   };
 
@@ -236,18 +291,24 @@ export const ShopperDashboard = () => {
 
   return (
     <div className="space-y-6">
-      <section className="grid gap-5 lg:grid-cols-4">
-        {[
-          ["Orders placed", String(orders.length)],
-          ["Active orders", String(activeOrders.length)],
-          ["Completed orders", String(completedOrders.length)],
-          ["Canceled orders", String(canceledOrders.length)],
-        ].map(([label, value]) => (
-          <div key={label} className="surface-card p-5">
-            <p className="text-sm text-staps-ink/55">{label}</p>
-            <p className="mt-3 font-display text-2xl font-extrabold">{value}</p>
-          </div>
-        ))}
+      <section className="surface-card p-3.5 md:p-5">
+        <div className="grid grid-cols-2 gap-2.5 md:grid-cols-4 md:gap-4">
+          {[
+            ["Orders placed", String(orders.length)],
+            ["Active orders", String(activeOrders.length)],
+            ["Completed orders", String(completedOrders.length)],
+            ["Canceled orders", String(canceledOrders.length)],
+          ].map(([label, value]) => (
+            <div key={label} className="rounded-[1.35rem] bg-[#f8f9fd] px-3.5 py-3 md:px-4 md:py-4">
+              <p className="text-[0.7rem] font-semibold uppercase tracking-[0.14em] text-staps-ink/45 md:text-sm md:normal-case md:tracking-normal">
+                {label}
+              </p>
+              <p className="mt-2 font-display text-[1.35rem] font-extrabold leading-none md:mt-3 md:text-2xl">
+                {value}
+              </p>
+            </div>
+          ))}
+        </div>
       </section>
 
       {(notice || error) && (
@@ -270,26 +331,52 @@ export const ShopperDashboard = () => {
 
             <form onSubmit={saveProfile} className="mt-6 grid gap-4">
               <div className="flex items-center gap-4 rounded-[1.6rem] bg-[#f8f9fd] p-4">
-                {user?.avatarUrl ? (
-                  <img
-                    src={resolveAssetUrl(user.avatarUrl)}
-                    alt={user.name}
-                    className="h-20 w-20 rounded-[1.4rem] object-cover"
+                <div className="relative shrink-0">
+                  {user?.avatarUrl ? (
+                    <img
+                      src={resolveAssetUrl(user.avatarUrl)}
+                      alt={user.name}
+                      className="h-20 w-20 rounded-[1.4rem] object-cover"
+                    />
+                  ) : (
+                    <div className="flex h-20 w-20 items-center justify-center rounded-[1.4rem] bg-[#eef2ff] font-display text-2xl font-bold text-[#5a49d6]">
+                      {(user?.name || "S")
+                        .split(" ")
+                        .map((part) => part[0])
+                        .join("")
+                        .slice(0, 2)
+                        .toUpperCase()}
+                    </div>
+                  )}
+                  <label
+                    htmlFor="shopper-avatar-upload"
+                    className="absolute -bottom-1 -right-1 inline-flex h-9 w-9 cursor-pointer items-center justify-center rounded-full bg-[#6e54ef] text-white shadow-[0_14px_24px_rgba(110,84,239,0.24)] transition hover:bg-[#5a49d6]"
+                    title="Update profile picture"
+                  >
+                    <CameraIcon className="h-4 w-4" />
+                  </label>
+                  <input
+                    id="shopper-avatar-upload"
+                    className="hidden"
+                    type="file"
+                    accept="image/*"
+                    onChange={(event) =>
+                      setProfileForm((current) => ({
+                        ...current,
+                        avatar: event.target.files?.[0] || null,
+                      }))
+                    }
                   />
-                ) : (
-                  <div className="flex h-20 w-20 items-center justify-center rounded-[1.4rem] bg-[#eef2ff] font-display text-2xl font-bold text-[#5a49d6]">
-                    {(user?.name || "S")
-                      .split(" ")
-                      .map((part) => part[0])
-                      .join("")
-                      .slice(0, 2)
-                      .toUpperCase()}
-                  </div>
-                )}
+                </div>
                 <div className="min-w-0">
                   <p className="font-semibold text-staps-ink">{user?.name}</p>
                   <p className="text-sm text-staps-ink/60">@{user?.username || "username"}</p>
                   <p className="mt-1 text-xs text-staps-ink/45">{user?.email}</p>
+                  <p className="mt-2 text-xs font-medium text-[#5a49d6]">
+                    {profileForm.avatar
+                      ? `Selected: ${profileForm.avatar.name}`
+                      : "Tap the camera icon to change your profile picture."}
+                  </p>
                 </div>
               </div>
 
@@ -309,25 +396,6 @@ export const ShopperDashboard = () => {
                   setProfileForm((current) => ({ ...current, username: event.target.value }))
                 }
               />
-              <label className="field flex cursor-pointer items-center justify-between gap-3">
-                <span className="text-staps-ink/70">
-                  {profileForm.avatar ? profileForm.avatar.name : "Update profile picture"}
-                </span>
-                <span className="rounded-full bg-[#eef2ff] px-4 py-2 text-sm font-semibold text-[#5a49d6]">
-                  Choose image
-                </span>
-                <input
-                  className="hidden"
-                  type="file"
-                  accept="image/*"
-                  onChange={(event) =>
-                    setProfileForm((current) => ({
-                      ...current,
-                      avatar: event.target.files?.[0] || null,
-                    }))
-                  }
-                />
-              </label>
               <button className="primary-button" type="submit">
                 Save profile
               </button>
@@ -359,19 +427,16 @@ export const ShopperDashboard = () => {
                     </option>
                   ))}
                 </select>
-                <select
-                  className="field"
-                  value={reviewForm.rating}
-                  onChange={(event) =>
-                    setReviewForm((current) => ({ ...current, rating: event.target.value }))
-                  }
-                >
-                  {[5, 4, 3, 2, 1].map((rating) => (
-                    <option key={rating} value={rating}>
-                      {rating} star{rating > 1 ? "s" : ""}
-                    </option>
-                  ))}
-                </select>
+                <div className="rounded-[1.5rem] border border-staps-ink/10 bg-white px-4 py-4">
+                  <p className="text-sm font-semibold text-staps-ink">Your rating</p>
+                  <div className="mt-3">
+                    {renderRatingStars(reviewForm.rating, {
+                      interactive: true,
+                      onSelect: (value) =>
+                        setReviewForm((current) => ({ ...current, rating: String(value) })),
+                    })}
+                  </div>
+                </div>
                 <textarea
                   className="field min-h-24"
                   placeholder="Share a quick note about the product or seller."
@@ -403,9 +468,7 @@ export const ShopperDashboard = () => {
                           Vendor: {review.vendor?.name || "Campus vendor"}
                         </p>
                       </div>
-                      <span className="rounded-full bg-[#eef2ff] px-3 py-1 text-sm font-semibold text-[#5a49d6]">
-                        {review.rating}/5
-                      </span>
+                      {renderRatingStars(review.rating)}
                     </div>
                     {review.comment ? (
                       <p className="mt-3 text-sm leading-6 text-staps-ink/70">{review.comment}</p>
@@ -567,7 +630,7 @@ export const ShopperDashboard = () => {
             </div>
           </section>
 
-          <section className="surface-card p-6">
+          <section className="hidden">
             <p className="text-sm font-bold uppercase tracking-[0.25em] text-[#6e54ef]">
               Complaint support
             </p>
@@ -676,25 +739,21 @@ export const ShopperDashboard = () => {
           <section id="notifications" className="surface-card scroll-mt-28 p-6">
             <p className="text-sm font-bold uppercase tracking-[0.25em] text-[#6e54ef]">Alerts</p>
             <h2 className="mt-2 font-display text-2xl font-extrabold">Notifications</h2>
+            <p className="mt-2 text-sm text-staps-ink/55">
+              Swipe left on any alert to remove it from your list.
+            </p>
             <div className="mt-5 space-y-3">
               {notifications.length ? (
                 notifications.map((notification) => (
-                  <div key={notification._id} className="rounded-2xl bg-staps-mist p-4">
-                    <div className="flex flex-wrap items-center justify-between gap-2">
-                      <p className="font-semibold">{notification.title}</p>
-                      {notification.metadata?.orderNumber ? (
-                        <span className="rounded-full bg-white px-3 py-1 text-xs font-semibold text-[#5a49d6]">
-                          {notification.metadata.orderNumber}
-                        </span>
-                      ) : null}
-                    </div>
-                    <p className="mt-1 text-sm text-staps-ink/65">{notification.message}</p>
-                    {formatNotificationTime(notification.createdAt) ? (
-                      <p className="mt-3 text-xs font-semibold uppercase tracking-[0.14em] text-staps-ink/45">
-                        {formatNotificationTime(notification.createdAt)}
-                      </p>
-                    ) : null}
-                  </div>
+                  <SwipeableNotificationCard
+                    key={notification._id}
+                    badge={notification.metadata?.orderNumber || ""}
+                    deleting={deletingNotificationId === notification._id}
+                    message={notification.message}
+                    onDelete={() => dismissNotification(notification._id)}
+                    timestamp={formatNotificationTime(notification.createdAt)}
+                    title={notification.title}
+                  />
                 ))
               ) : (
                 <p className="text-sm text-staps-ink/65">No new alerts yet.</p>

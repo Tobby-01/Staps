@@ -36,6 +36,17 @@ export const AppShell = ({ search, setSearch, searchRequestToken, requestSearchR
       <main className="mx-auto max-w-7xl px-3 pb-6 pt-4 sm:px-4 md:pb-8 md:pt-10">
         <Outlet context={{ search, searchRequestToken }} />
       </main>
+      <footer className="mx-auto max-w-7xl px-3 pb-6 sm:px-4 md:pb-8">
+        <div className="rounded-[1.35rem] border border-white/60 bg-white/70 px-4 py-3 text-center text-sm text-staps-ink/65 backdrop-blur">
+          Complaints:{" "}
+          <a
+            href="mailto:stapdevs@gmail.com"
+            className="font-semibold text-[#5a49d6] transition hover:text-[#4735cf]"
+          >
+            Stapdevs@gmail.com
+          </a>
+        </div>
+      </footer>
     </div>
   );
 };
