@@ -249,7 +249,7 @@ export const CategoryPage = () => {
                   )}
                 </div>
               ) : filteredProducts.length ? (
-                <div className="grid grid-cols-2 gap-3 md:grid-cols-2 md:gap-5 xl:grid-cols-3">
+                <div className="grid grid-cols-1 gap-3 min-[480px]:grid-cols-2 md:gap-5 xl:grid-cols-3">
                   {filteredProducts.map((product, index) => (
                     <ProductCard
                       key={product._id || product.id}

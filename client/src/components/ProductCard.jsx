@@ -40,7 +40,9 @@ export const ProductCard = ({ product, featured = false }) => {
   const renderQuantityControl = ({ featuredMode = false, mobile = false } = {}) => (
     <div
       className={`grid items-center rounded-2xl ${
-        mobile ? "grid-cols-[2.5rem_minmax(0,1fr)_2.5rem] gap-1.5 p-1" : "grid-cols-[auto_minmax(0,1fr)_auto] gap-2 p-1.5"
+        mobile
+          ? "grid-cols-[2.5rem_minmax(0,1fr)_2.5rem] gap-1.5 p-1"
+          : "grid-cols-[2.25rem_minmax(0,1fr)_2.25rem] gap-1.5 p-1.5"
       } ${
         featuredMode
           ? "bg-white text-[#5a49d6]"
@@ -52,7 +54,9 @@ export const ProductCard = ({ product, featured = false }) => {
       <button
         type="button"
         onClick={() => decrementItem(product)}
-        className={`inline-flex h-10 w-10 items-center justify-center rounded-[1rem] transition ${
+        className={`inline-flex items-center justify-center rounded-[1rem] transition ${
+          mobile ? "h-10 w-10" : "h-9 w-9"
+        } ${
           featuredMode ? "bg-[#f1edff] text-[#5a49d6]" : "bg-white text-staps-ink shadow-sm"
         }`}
         aria-label={`Remove one ${product.name} from cart`}
@@ -62,7 +66,9 @@ export const ProductCard = ({ product, featured = false }) => {
       <div className="min-w-0 flex-1 text-center">
         <p
           className={`font-bold uppercase ${
-            mobile ? "text-[0.58rem] tracking-[0.16em]" : "text-[0.62rem] tracking-[0.2em]"
+            mobile
+              ? "text-[0.58rem] tracking-[0.16em]"
+              : "whitespace-nowrap text-[0.56rem] leading-tight tracking-[0.14em]"
           } ${
             featuredMode ? "text-[#7c68ee]" : "text-staps-ink/45"
           }`}
@@ -76,7 +82,9 @@ export const ProductCard = ({ product, featured = false }) => {
       <button
         type="button"
         onClick={() => addToCart(product)}
-        className={`inline-flex h-10 w-10 items-center justify-center rounded-[1rem] transition ${
+        className={`inline-flex items-center justify-center rounded-[1rem] transition ${
+          mobile ? "h-10 w-10" : "h-9 w-9"
+        } ${
           featuredMode
             ? "bg-[#5a49d6] text-white"
             : mobile
@@ -276,7 +284,7 @@ export const ProductCard = ({ product, featured = false }) => {
               </Link>
             </div>
           ) : (
-            <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+            <div className="grid grid-cols-1 gap-2 lg:grid-cols-[minmax(0,1.2fr)_minmax(0,1fr)]">
               {cartQuantity ? (
                 renderQuantityControl({ featuredMode: featured })
               ) : (
