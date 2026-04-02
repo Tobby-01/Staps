@@ -6,7 +6,8 @@
   "scripts": {
     "dev": "nodemon src/server.js",
     "start": "node src/server.js",
-    "notify:mailing-restored": "node src/scripts/notify-mailing-restored.js"
+    "notify:mailing-restored": "node src/scripts/notify-mailing-restored.js",
+    "reset:marketplace:test2": "node src/scripts/reset-marketplace-for-test2.js --confirm=staps-reset-test2"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.1016.0",

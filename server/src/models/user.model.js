@@ -42,6 +42,28 @@ const userSchema = new mongoose.Schema(
       default: 0,
       min: 0,
     },
+    walletFundingAccount: {
+      provider: {
+        type: String,
+        default: "paystack",
+      },
+      customerCode: String,
+      dedicatedAccountId: Number,
+      accountNumber: String,
+      accountName: String,
+      bankName: String,
+      bankCode: String,
+      currency: {
+        type: String,
+        default: "NGN",
+      },
+      active: {
+        type: Boolean,
+        default: false,
+      },
+      assignedAt: Date,
+      lastSyncedAt: Date,
+    },
     isEmailVerified: {
       type: Boolean,
       default: false,

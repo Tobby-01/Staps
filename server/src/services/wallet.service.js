@@ -2,6 +2,11 @@ import { ROLES } from "../constants/roles.js";
 import { User } from "../models/user.model.js";
 import { WalletTransaction } from "../models/wallet-transaction.model.js";
 import { ApiError } from "../utils/api-error.js";
+import {
+  createCustomer,
+  createDedicatedAccount,
+  listCustomersByEmail,
+} from "./paystack.service.js";
 
 const normalizeWalletAmount = (value, { fieldName = "Amount" } = {}) => {
   const parsedValue = Number(value);
@@ -19,12 +24,48 @@ const normalizeWalletAmount = (value, { fieldName = "Amount" } = {}) => {
 };
 
 const getWalletUserById = async (userId) => {
-  const user = await User.findById(userId).select("walletBalance role name email");
+  const user = await User.findById(userId).select(
+    "walletBalance role name email walletFundingAccount",
+  );
   if (!user) {
     throw new ApiError(404, "User not found.");
   }
 
   return user;
+};
+
+const formatFundingAccountPayload = (walletFundingAccount) => {
+  if (!walletFundingAccount?.accountNumber) {
+    return null;
+  }
+
+  return {
+    provider: walletFundingAccount.provider || "paystack",
+    accountNumber: walletFundingAccount.accountNumber,
+    accountName: walletFundingAccount.accountName || "",
+    bankName: walletFundingAccount.bankName || "",
+    bankCode: walletFundingAccount.bankCode || "",
+    currency: walletFundingAccount.currency || "NGN",
+    active: walletFundingAccount.active !== false,
+    assignedAt: walletFundingAccount.assignedAt || null,
+    lastSyncedAt: walletFundingAccount.lastSyncedAt || null,
+  };
+};
+
+const splitName = (name = "") => {
+  const parts = String(name).trim().split(/\s+/).filter(Boolean);
+  if (!parts.length) {
+    return { firstName: "STAPS", lastName: "Shopper" };
+  }
+
+  if (parts.length === 1) {
+    return { firstName: parts[0], lastName: "Shopper" };
+  }
+
+  return {
+    firstName: parts[0],
+    lastName: parts.slice(1).join(" "),
+  };
 };
 
 export const ensureShopperWalletAccess = async (userId) => {
@@ -144,8 +185,70 @@ export const getWalletSummary = async (userId, { limit = 25 } = {}) => {
   return {
     balance: Math.max(0, Math.round(Number(user.walletBalance || 0))),
     currency: "NGN",
+    fundingAccount: formatFundingAccountPayload(user.walletFundingAccount),
     transactions,
   };
+};
+
+export const getWalletFundingAccount = async (userId) => {
+  const user = await ensureShopperWalletAccess(userId);
+
+  return formatFundingAccountPayload(user.walletFundingAccount);
+};
+
+export const provisionWalletFundingAccount = async (userId) => {
+  const user = await ensureShopperWalletAccess(userId);
+
+  if (user.walletFundingAccount?.accountNumber) {
+    return formatFundingAccountPayload(user.walletFundingAccount);
+  }
+
+  const { firstName, lastName } = splitName(user.name);
+  let customerCode = user.walletFundingAccount?.customerCode || "";
+
+  if (!customerCode) {
+    const existingCustomers = await listCustomersByEmail(user.email);
+    const matchedCustomer = Array.isArray(existingCustomers)
+      ? existingCustomers.find((entry) => entry?.customer_code)
+      : null;
+
+    if (matchedCustomer?.customer_code) {
+      customerCode = matchedCustomer.customer_code;
+    } else {
+      const createdCustomer = await createCustomer({
+        email: user.email,
+        firstName,
+        lastName,
+      });
+      customerCode = createdCustomer.customer_code;
+    }
+  }
+
+  if (!customerCode) {
+    throw new ApiError(502, "Could not create a wallet funding profile at the moment.");
+  }
+
+  const dedicatedAccount = await createDedicatedAccount({
+    customerCode,
+  });
+
+  user.walletFundingAccount = {
+    provider: "paystack",
+    customerCode,
+    dedicatedAccountId: Number(dedicatedAccount.id) || undefined,
+    accountNumber: dedicatedAccount.account_number || "",
+    accountName: dedicatedAccount.account_name || "",
+    bankName: dedicatedAccount.bank?.name || "",
+    bankCode: dedicatedAccount.bank?.slug || "",
+    currency: dedicatedAccount.currency || "NGN",
+    active: dedicatedAccount.active !== false,
+    assignedAt: dedicatedAccount.created_at ? new Date(dedicatedAccount.created_at) : new Date(),
+    lastSyncedAt: new Date(),
+  };
+
+  await user.save();
+
+  return formatFundingAccountPayload(user.walletFundingAccount);
 };
 
 export const getWalletTransactionByReference = async ({ reference, type }) =>
@@ -153,4 +256,3 @@ export const getWalletTransactionByReference = async ({ reference, type }) =>
     reference,
     ...(type ? { type } : {}),
   });
-

@@ -4,7 +4,9 @@ import { ApiError } from "../utils/api-error.js";
 import { initializeTransaction } from "../services/paystack.service.js";
 import {
   ensureShopperWalletAccess,
+  getWalletFundingAccount,
   getWalletSummary,
+  provisionWalletFundingAccount,
 } from "../services/wallet.service.js";
 
 export const getMyWallet = asyncHandler(async (req, res) => {
@@ -43,5 +45,28 @@ export const initializeWalletFunding = asyncHandler(async (req, res) => {
     success: true,
     message: "Wallet funding started. Continue with Paystack.",
     payment: transaction,
+  });
+});
+
+export const getMyWalletFundingAccount = asyncHandler(async (req, res) => {
+  await ensureShopperWalletAccess(req.user.id);
+
+  const fundingAccount = await getWalletFundingAccount(req.user.id);
+
+  res.json({
+    success: true,
+    fundingAccount,
+  });
+});
+
+export const provisionMyWalletFundingAccount = asyncHandler(async (req, res) => {
+  await ensureShopperWalletAccess(req.user.id);
+
+  const fundingAccount = await provisionWalletFundingAccount(req.user.id);
+
+  res.json({
+    success: true,
+    message: "Personal wallet funding account is ready.",
+    fundingAccount,
   });
 });

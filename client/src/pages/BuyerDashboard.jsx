@@ -39,10 +39,12 @@ export const ShopperDashboard = () => {
   const [wallet, setWallet] = useState({
     balance: 0,
     currency: "NGN",
+    fundingAccount: null,
     transactions: [],
   });
   const [walletFundAmount, setWalletFundAmount] = useState("2000");
   const [walletFunding, setWalletFunding] = useState(false);
+  const [walletFundingAccountBusy, setWalletFundingAccountBusy] = useState(false);
   const [notice, setNotice] = useState("");
   const [error, setError] = useState("");
   const [profileForm, setProfileForm] = useState({
@@ -77,7 +79,9 @@ export const ShopperDashboard = () => {
       setNotifications(notificationsResponse.notifications || []);
       setReviews(reviewsResponse.reviews || []);
       setConversations(conversationsResponse.conversations || []);
-      setWallet(walletResponse.wallet || { balance: 0, currency: "NGN", transactions: [] });
+      setWallet(
+        walletResponse.wallet || { balance: 0, currency: "NGN", fundingAccount: null, transactions: [] },
+      );
       setError("");
     } catch (requestError) {
       if (!silent) {
@@ -303,6 +307,30 @@ export const ShopperDashboard = () => {
     }
   };
 
+  const provisionWalletFundingAccount = async () => {
+    try {
+      setWalletFundingAccountBusy(true);
+      setError("");
+      setNotice("");
+      const response = await apiRequest("/api/wallet/fund/account", {
+        method: "POST",
+      });
+
+      if (response.fundingAccount) {
+        setWallet((current) => ({
+          ...current,
+          fundingAccount: response.fundingAccount,
+        }));
+      }
+
+      setNotice(response.message || "Personal wallet funding account is ready.");
+    } catch (requestError) {
+      setError(requestError.message);
+    } finally {
+      setWalletFundingAccountBusy(false);
+    }
+  };
+
   const submitReview = async (event) => {
     event.preventDefault();
 
@@ -390,6 +418,62 @@ export const ShopperDashboard = () => {
               Minimum top-up: NGN 500
             </p>
           </form>
+        </div>
+
+        <div className="mt-5 rounded-[1.5rem] border border-staps-ink/10 bg-white p-4">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div>
+              <p className="text-xs font-bold uppercase tracking-[0.16em] text-[#6e54ef]">
+                Personal funding account
+              </p>
+              <p className="mt-1 text-sm text-staps-ink/60">
+                Transfer directly to your assigned account and Paystack will credit your wallet.
+              </p>
+            </div>
+            {!wallet.fundingAccount?.accountNumber ? (
+              <button
+                className="secondary-button"
+                type="button"
+                onClick={provisionWalletFundingAccount}
+                disabled={walletFundingAccountBusy}
+              >
+                {walletFundingAccountBusy ? "Generating..." : "Generate account details"}
+              </button>
+            ) : null}
+          </div>
+
+          {wallet.fundingAccount?.accountNumber ? (
+            <div className="mt-4 grid gap-3 rounded-2xl bg-[#f8f9fd] p-4 sm:grid-cols-3">
+              <div>
+                <p className="text-xs font-semibold uppercase tracking-[0.14em] text-staps-ink/45">
+                  Account number
+                </p>
+                <p className="mt-1 font-display text-2xl font-extrabold text-staps-ink">
+                  {wallet.fundingAccount.accountNumber}
+                </p>
+              </div>
+              <div>
+                <p className="text-xs font-semibold uppercase tracking-[0.14em] text-staps-ink/45">
+                  Bank
+                </p>
+                <p className="mt-1 text-sm font-semibold text-staps-ink">
+                  {wallet.fundingAccount.bankName || "Paystack partner bank"}
+                </p>
+              </div>
+              <div>
+                <p className="text-xs font-semibold uppercase tracking-[0.14em] text-staps-ink/45">
+                  Account name
+                </p>
+                <p className="mt-1 text-sm font-semibold text-staps-ink">
+                  {wallet.fundingAccount.accountName || user?.name || "STAPS shopper"}
+                </p>
+              </div>
+            </div>
+          ) : (
+            <p className="mt-4 text-sm text-staps-ink/60">
+              No personal funding account yet. Generate one to fund by bank transfer.
+            </p>
+          )}
         </div>
 
         <div className="mt-6 space-y-3">

@@ -90,6 +90,31 @@ export const initiateTransfer = ({ amount, recipient, reference, reason, currenc
     }),
   });
 
+export const listCustomersByEmail = (email) =>
+  paystackRequest(`/customer?perPage=50&email=${encodeURIComponent(email)}`, {
+    method: "GET",
+  });
+
+export const createCustomer = ({ email, firstName, lastName, phone }) =>
+  paystackRequest("/customer", {
+    method: "POST",
+    body: JSON.stringify({
+      email,
+      first_name: firstName,
+      last_name: lastName,
+      phone,
+    }),
+  });
+
+export const createDedicatedAccount = ({ customerCode, preferredBank = "wema-bank" }) =>
+  paystackRequest("/dedicated_account", {
+    method: "POST",
+    body: JSON.stringify({
+      customer: customerCode,
+      preferred_bank: preferredBank,
+    }),
+  });
+
 export const releaseEscrowToVendor = async (order, recipientCode) => {
   if (!recipientCode) {
     throw new ApiError(

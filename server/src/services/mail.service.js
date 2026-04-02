@@ -174,7 +174,17 @@ export const verifyMailTransport = async () => {
 
 const sendMail = async (payload) => {
   try {
-    await getTransporter().sendMail(payload);
+    const mailPayload = {
+      ...payload,
+      html: payload.html
+        ? wrapBrandedEmail({
+            subject: payload.subject,
+            html: payload.html,
+          })
+        : payload.html,
+    };
+
+    await getTransporter().sendMail(mailPayload);
   } catch (error) {
     console.error("SMTP send failed.");
     console.error(
@@ -303,6 +313,56 @@ const resolveEmailImage = (imagePath = "", cid) => {
 };
 
 const formatOrderNumber = (orderId = "") => `#${String(orderId).slice(-6).toUpperCase()}`;
+
+const wrapBrandedEmail = ({ subject = "STAPS update", html = "" }) => {
+  const logoUrl = `${env.clientUrl}/favicon.svg`;
+  const year = new Date().getFullYear();
+
+  return `
+    <div style="margin: 0; padding: 28px 12px; background: linear-gradient(135deg, #edf0ff 0%, #f7fbff 45%, #f5f8ef 100%);">
+      <div style="display: none; max-height: 0; overflow: hidden; opacity: 0;">
+        ${subject}
+      </div>
+      <table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%" style="max-width: 660px; margin: 0 auto; border-collapse: separate;">
+        <tr>
+          <td style="padding: 0;">
+            <div style="border-radius: 28px; overflow: hidden; border: 1px solid rgba(255, 255, 255, 0.7); box-shadow: 0 24px 56px rgba(30, 42, 70, 0.14); background: #ffffff;">
+              <div style="padding: 26px 28px; background: linear-gradient(120deg, #6f54ef 0%, #8ea6ff 55%, #6dddc2 100%);">
+                <table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%">
+                  <tr>
+                    <td style="vertical-align: middle;">
+                      <img src="${logoUrl}" alt="STAPS logo" width="44" height="44" style="display: block; width: 44px; height: 44px; border-radius: 12px;" />
+                    </td>
+                    <td style="padding-left: 14px; vertical-align: middle;">
+                      <p style="margin: 0; font-family: 'Segoe UI', Arial, sans-serif; font-size: 18px; font-weight: 800; color: #ffffff; letter-spacing: 0.02em;">
+                        STAPS
+                      </p>
+                      <p style="margin: 4px 0 0; font-family: 'Segoe UI', Arial, sans-serif; font-size: 12px; font-weight: 600; color: rgba(255, 255, 255, 0.9); text-transform: uppercase; letter-spacing: 0.12em;">
+                        Campus marketplace
+                      </p>
+                    </td>
+                    <td style="text-align: right; vertical-align: middle;">
+                      <span style="display: inline-block; border-radius: 999px; padding: 7px 12px; background: rgba(255, 255, 255, 0.18); font-family: 'Segoe UI', Arial, sans-serif; font-size: 11px; font-weight: 700; color: rgba(255, 255, 255, 0.95);">
+                        ${subject}
+                      </span>
+                    </td>
+                  </tr>
+                </table>
+              </div>
+              <div style="padding: 28px; font-family: 'Segoe UI', Arial, sans-serif; color: #1f2937; line-height: 1.65;">
+                ${html}
+              </div>
+              <div style="padding: 0 28px 24px; font-family: 'Segoe UI', Arial, sans-serif; font-size: 12px; color: #6b7280;">
+                <p style="margin: 0;">STAPS Marketplace &middot; Trusted campus commerce</p>
+                <p style="margin: 8px 0 0;">&copy; ${year} STAPS. All rights reserved.</p>
+              </div>
+            </div>
+          </td>
+        </tr>
+      </table>
+    </div>
+  `;
+};
 
 export const sendWelcomeEmail = async ({
   to,

@@ -8,7 +8,9 @@ import {
 
 const CartContext = createContext(null);
 
-const storageKey = "staps-cart";
+const clientStateVersion = (import.meta.env.VITE_CLIENT_STATE_VERSION || "2026-test2").trim();
+const storageKey = `staps-cart-${clientStateVersion || "2026-test2"}`;
+const legacyStorageKeys = ["staps-cart"];
 const getItemKeys = (item) => [item?._id, item?.id, item?.cartKey].filter(Boolean).map(String);
 const getPrimaryKey = (item) => getItemKeys(item)[0] || null;
 const matchesItem = (left, right) => {
@@ -76,6 +78,12 @@ export const CartProvider = ({ children }) => {
   const grandTotal = subtotal + deliveryTotal;
 
   useEffect(() => {
+    legacyStorageKeys.forEach((legacyKey) => {
+      if (legacyKey !== storageKey) {
+        localStorage.removeItem(legacyKey);
+      }
+    });
+
     const saved = localStorage.getItem(storageKey);
     if (saved) {
       const parsedItems = JSON.parse(saved);

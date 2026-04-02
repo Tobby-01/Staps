@@ -2,7 +2,9 @@ import { createContext, useContext, useEffect, useState } from "react";
 
 const FavoritesContext = createContext(null);
 
-const storageKey = "staps-favorites";
+const clientStateVersion = (import.meta.env.VITE_CLIENT_STATE_VERSION || "2026-test2").trim();
+const storageKey = `staps-favorites-${clientStateVersion || "2026-test2"}`;
+const legacyStorageKeys = ["staps-favorites"];
 const getItemKeys = (item) => [item?._id, item?.id, item?.favoriteKey].filter(Boolean).map(String);
 const matchesItem = (left, right) => {
   const leftKeys = getItemKeys(left);
@@ -19,6 +21,12 @@ export const FavoritesProvider = ({ children }) => {
   const [items, setItems] = useState([]);
 
   useEffect(() => {
+    legacyStorageKeys.forEach((legacyKey) => {
+      if (legacyKey !== storageKey) {
+        localStorage.removeItem(legacyKey);
+      }
+    });
+
     const saved = localStorage.getItem(storageKey);
     if (saved) {
       setItems(JSON.parse(saved));

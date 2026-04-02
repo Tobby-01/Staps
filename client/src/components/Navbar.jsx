@@ -157,10 +157,11 @@ export const Navbar = ({ search, setSearch, requestSearchResults }) => {
         <div className="mobile-navbar-top flex items-center justify-between gap-2 md:justify-start md:gap-4">
           <Link
             to="/"
-            className="mobile-navbar-brand font-display text-[1.45rem] font-extrabold tracking-tight leading-none text-staps-ink sm:text-2xl"
+            className="mobile-navbar-brand inline-flex items-center justify-center rounded-2xl bg-white/65 p-1.5 shadow-[0_10px_24px_rgba(62,72,118,0.12)] md:bg-white/45"
             onClick={closeMobileMenu}
           >
-            STAPS
+            <img src="/favicon.svg" alt="STAPS logo" className="h-11 w-11 sm:h-12 sm:w-12" />
+            <span className="sr-only">STAPS home</span>
           </Link>
           <span className="glass-chip hidden text-xs font-semibold text-[#5144c7] md:inline-flex">
             Campus marketplace
