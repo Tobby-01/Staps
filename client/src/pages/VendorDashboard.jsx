@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 
 import { SwipeableNotificationCard } from "../components/SwipeableNotificationCard.jsx";
@@ -73,6 +73,8 @@ const getSellingRestrictionCopy = (profile) => {
 };
 
 export const VendorDashboard = () => {
+  const payoutFormDirtyRef = useRef(false);
+  const payoutFormHydratedRef = useRef(false);
   const [profile, setProfile] = useState(null);
   const [orders, setOrders] = useState([]);
   const [products, setProducts] = useState([]);
@@ -138,7 +140,7 @@ export const VendorDashboard = () => {
     [editImagePreviews],
   );
 
-  const loadDashboard = async ({ silent = false } = {}) => {
+  const loadDashboard = async ({ silent = false, forcePayoutFormSync = false } = {}) => {
     try {
       const [
         vendorResponse,
@@ -166,10 +168,13 @@ export const VendorDashboard = () => {
           (product) => product.vendor?._id === vendorResponse.vendor?.user?._id,
         ),
       );
-      setPayoutForm({
-        bankCode: vendorResponse.vendor?.payoutAccount?.bankCode || "",
-        accountNumber: vendorResponse.vendor?.payoutAccount?.accountNumber || "",
-      });
+      if (forcePayoutFormSync || !payoutFormHydratedRef.current || !payoutFormDirtyRef.current) {
+        setPayoutForm({
+          bankCode: vendorResponse.vendor?.payoutAccount?.bankCode || "",
+          accountNumber: vendorResponse.vendor?.payoutAccount?.accountNumber || "",
+        });
+        payoutFormHydratedRef.current = true;
+      }
       setBrandingForm((current) =>
         current.name || current.avatar
           ? current
@@ -278,8 +283,9 @@ export const VendorDashboard = () => {
         method: "POST",
         body: JSON.stringify(payoutForm),
       });
+      payoutFormDirtyRef.current = false;
       setMessage("Payout account saved successfully.");
-      await loadDashboard();
+      await loadDashboard({ forcePayoutFormSync: true });
     } catch (requestError) {
       setError(requestError.message);
     }
@@ -766,9 +772,10 @@ export const VendorDashboard = () => {
               <select
                 className="field"
                 value={payoutForm.bankCode}
-                onChange={(event) =>
-                  setPayoutForm((current) => ({ ...current, bankCode: event.target.value }))
-                }
+                onChange={(event) => {
+                  payoutFormDirtyRef.current = true;
+                  setPayoutForm((current) => ({ ...current, bankCode: event.target.value }));
+                }}
               >
                 <option value="">Select bank</option>
                 {banks.map((bank) => (
@@ -781,9 +788,13 @@ export const VendorDashboard = () => {
                 className="field"
                 placeholder="Account number"
                 value={payoutForm.accountNumber}
-                onChange={(event) =>
-                  setPayoutForm((current) => ({ ...current, accountNumber: event.target.value }))
-                }
+                onChange={(event) => {
+                  payoutFormDirtyRef.current = true;
+                  setPayoutForm((current) => ({
+                    ...current,
+                    accountNumber: event.target.value.replace(/\D/g, "").slice(0, 10),
+                  }));
+                }}
               />
               <div className="rounded-2xl bg-staps-mist px-4 py-3 text-sm text-staps-ink md:col-span-2">
                 <p>
