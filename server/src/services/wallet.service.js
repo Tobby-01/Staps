@@ -228,9 +228,22 @@ export const provisionWalletFundingAccount = async (userId) => {
     throw new ApiError(502, "Could not create a wallet funding profile at the moment.");
   }
 
-  const dedicatedAccount = await createDedicatedAccount({
-    customerCode,
-  });
+  let dedicatedAccount = null;
+
+  try {
+    dedicatedAccount = await createDedicatedAccount({
+      customerCode,
+    });
+  } catch (error) {
+    if (/dedicated\s*nuban\s+is\s+not\s+available/i.test(String(error?.message || ""))) {
+      throw new ApiError(
+        400,
+        "Personal funding accounts are not enabled on this payment profile yet. Enable Dedicated Virtual Accounts on Paystack or continue funding via Paystack checkout.",
+      );
+    }
+
+    throw error;
+  }
 
   user.walletFundingAccount = {
     provider: "paystack",

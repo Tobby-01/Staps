@@ -45,6 +45,7 @@ export const ShopperDashboard = () => {
   const [walletFundAmount, setWalletFundAmount] = useState("2000");
   const [walletFunding, setWalletFunding] = useState(false);
   const [walletFundingAccountBusy, setWalletFundingAccountBusy] = useState(false);
+  const [walletFundingAccountUnavailable, setWalletFundingAccountUnavailable] = useState(false);
   const [notice, setNotice] = useState("");
   const [error, setError] = useState("");
   const [profileForm, setProfileForm] = useState({
@@ -321,6 +322,7 @@ export const ShopperDashboard = () => {
           ...current,
           fundingAccount: response.fundingAccount,
         }));
+        setWalletFundingAccountUnavailable(false);
       }
 
       setNotice(response.message || "Personal wallet funding account is ready.");
@@ -328,6 +330,18 @@ export const ShopperDashboard = () => {
       if (String(requestError.message || "").includes("/api/wallet/fund/account")) {
         setError(
           "Personal funding account setup is not live on this server yet. Please use 'Fund now' for now and redeploy the latest backend.",
+        );
+        return;
+      }
+
+      if (
+        /personal funding accounts are not enabled|dedicated\s*nuban\s+is\s+not\s+available/i.test(
+          String(requestError.message || ""),
+        )
+      ) {
+        setWalletFundingAccountUnavailable(true);
+        setError(
+          "Personal funding account is not enabled on your Paystack profile yet. You can still fund wallet with the 'Fund now' button.",
         );
         return;
       }
@@ -442,9 +456,13 @@ export const ShopperDashboard = () => {
                 className="secondary-button"
                 type="button"
                 onClick={provisionWalletFundingAccount}
-                disabled={walletFundingAccountBusy}
+                disabled={walletFundingAccountBusy || walletFundingAccountUnavailable}
               >
-                {walletFundingAccountBusy ? "Generating..." : "Generate account details"}
+                {walletFundingAccountBusy
+                  ? "Generating..."
+                  : walletFundingAccountUnavailable
+                    ? "Unavailable on current profile"
+                    : "Generate account details"}
               </button>
             ) : null}
           </div>
