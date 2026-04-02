@@ -325,6 +325,13 @@ export const ShopperDashboard = () => {
 
       setNotice(response.message || "Personal wallet funding account is ready.");
     } catch (requestError) {
+      if (String(requestError.message || "").includes("/api/wallet/fund/account")) {
+        setError(
+          "Personal funding account setup is not live on this server yet. Please use 'Fund now' for now and redeploy the latest backend.",
+        );
+        return;
+      }
+
       setError(requestError.message);
     } finally {
       setWalletFundingAccountBusy(false);
