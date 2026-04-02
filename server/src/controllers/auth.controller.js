@@ -10,7 +10,6 @@ import {
   sendWelcomeEmail,
 } from "../services/mail.service.js";
 import {
-  deleteImageFromCloudflare,
   hasCloudflareImagesConfig,
   uploadImageToCloudflare,
 } from "../services/cloudflare-images.service.js";
@@ -25,6 +24,7 @@ const sanitizeUser = (user) => ({
   username: user.username,
   role: user.role,
   avatarUrl: user.avatarUrl,
+  walletBalance: Math.max(0, Math.round(Number(user.walletBalance || 0))),
   isEmailVerified: user.isEmailVerified !== false,
 });
 
@@ -92,25 +92,18 @@ export const signup = asyncHandler(async (req, res) => {
   let user = existingUser;
 
   if (user) {
-    const previousAvatarImageId = user.avatarImageId;
-
     user.name = name;
     user.username = normalizedUsername;
     user.email = normalizedEmail;
     user.password = password;
     user.role = resolvedRole;
     user.avatarUrl = avatarUrl;
-    user.avatarImageId = uploadedAvatar?.id || user.avatarImageId;
     user.isEmailVerified = false;
     user.emailVerificationCodeHash = hashResetCode(verificationCode);
     user.emailVerificationExpiresAt = new Date(
       Date.now() + env.passwordResetCodeTtlMinutes * 60 * 1000,
     );
     await user.save();
-
-    if (uploadedAvatar?.id && previousAvatarImageId && previousAvatarImageId !== uploadedAvatar.id) {
-      deleteImageFromCloudflare(previousAvatarImageId).catch(() => {});
-    }
   } else {
     user = await User.create({
       name,
@@ -119,7 +112,6 @@ export const signup = asyncHandler(async (req, res) => {
       password,
       role: resolvedRole,
       avatarUrl,
-      avatarImageId: uploadedAvatar?.id,
       isEmailVerified: false,
       emailVerificationCodeHash: hashResetCode(verificationCode),
       emailVerificationExpiresAt: new Date(
@@ -412,13 +404,7 @@ export const updateProfile = asyncHandler(async (req, res) => {
       });
     }
 
-    const previousAvatarImageId = user.avatarImageId;
     user.avatarUrl = uploadedAvatar?.url || `/uploads/avatars/${req.file.filename}`;
-    user.avatarImageId = uploadedAvatar?.id || user.avatarImageId;
-
-    if (uploadedAvatar?.id && previousAvatarImageId && previousAvatarImageId !== uploadedAvatar.id) {
-      deleteImageFromCloudflare(previousAvatarImageId).catch(() => {});
-    }
   }
 
   await user.save();

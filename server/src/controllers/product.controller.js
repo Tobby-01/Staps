@@ -1,5 +1,7 @@
 import { Follow } from "../models/follow.model.js";
+import { Order } from "../models/order.model.js";
 import { Product } from "../models/product.model.js";
+import { ORDER_STATUS } from "../constants/order.js";
 import {
   DEFAULT_DELIVERY_FEE,
   MAX_DELIVERY_FEE,
@@ -10,6 +12,10 @@ import { ApiError } from "../utils/api-error.js";
 import { asyncHandler } from "../utils/async-handler.js";
 
 import { createBulkNotifications } from "../services/notification.service.js";
+import {
+  hasCloudflareR2Config,
+  uploadProductImagesToR2,
+} from "../services/cloudflare-r2.service.js";
 import {
   ensureVendorCanSell,
   listSellableVendorProfiles,
@@ -101,6 +107,80 @@ const parseDeliveryFeeInput = (value, { fallback = DEFAULT_DELIVERY_FEE } = {}) 
   return Math.round(parsedValue);
 };
 
+const rankProductsForHomeFeed = async (products = [], { limit = 6 } = {}) => {
+  if (!products.length) {
+    return [];
+  }
+
+  const normalizedLimit = Math.max(1, Math.min(24, Number(limit) || 6));
+  const productIds = products.map((product) => product._id || product.id).filter(Boolean);
+
+  if (!productIds.length) {
+    return products.slice(0, normalizedLimit);
+  }
+
+  const paidOrders = await Order.find({
+    product: { $in: productIds },
+    isPaid: true,
+    status: {
+      $in: [
+        ORDER_STATUS.PAID,
+        ORDER_STATUS.PROCESSING,
+        ORDER_STATUS.SHIPPED,
+        ORDER_STATUS.DELIVERED,
+        ORDER_STATUS.COMPLETED,
+      ],
+    },
+  })
+    .select("product quantity createdAt")
+    .lean();
+
+  const orderScoreByProduct = new Map();
+
+  for (const order of paidOrders) {
+    const productId = String(order.product || "");
+    if (!productId) {
+      continue;
+    }
+
+    const existing = orderScoreByProduct.get(productId) || {
+      orderCount: 0,
+      lastOrderAt: 0,
+    };
+
+    existing.orderCount += Math.max(1, Math.round(Number(order.quantity || 1)));
+    existing.lastOrderAt = Math.max(
+      existing.lastOrderAt,
+      new Date(order.createdAt || Date.now()).getTime(),
+    );
+
+    orderScoreByProduct.set(productId, existing);
+  }
+
+  const rankedProducts = [...products].sort((left, right) => {
+    const leftScore = orderScoreByProduct.get(String(left._id || left.id)) || {
+      orderCount: 0,
+      lastOrderAt: 0,
+    };
+    const rightScore = orderScoreByProduct.get(String(right._id || right.id)) || {
+      orderCount: 0,
+      lastOrderAt: 0,
+    };
+
+    if (leftScore.orderCount !== rightScore.orderCount) {
+      return rightScore.orderCount - leftScore.orderCount;
+    }
+
+    if (leftScore.lastOrderAt !== rightScore.lastOrderAt) {
+      return rightScore.lastOrderAt - leftScore.lastOrderAt;
+    }
+
+    return new Date(right.createdAt || 0).getTime() - new Date(left.createdAt || 0).getTime();
+  });
+
+  return rankedProducts.slice(0, normalizedLimit);
+};
+
 export const listProducts = asyncHandler(async (req, res) => {
   const query = { isActive: true };
   const searchTerm = String(req.query.search || "").trim();
@@ -122,6 +202,17 @@ export const listProducts = asyncHandler(async (req, res) => {
   const filteredProducts = enrichedProducts.filter((product) =>
     isStorefrontAvailable(product) && matchesMarketplaceSearch(product, searchTerm),
   );
+
+  if (String(req.query.feed || "").trim().toLowerCase() === "home") {
+    const rankedProducts = await rankProductsForHomeFeed(filteredProducts, {
+      limit: req.query.limit,
+    });
+
+    return res.json({
+      success: true,
+      products: rankedProducts,
+    });
+  }
 
   res.json({
     success: true,
@@ -154,7 +245,17 @@ export const createProduct = asyncHandler(async (req, res) => {
     throw new ApiError(400, "Name, price, description, and category are required.");
   }
 
-  const imagePaths = (req.files || []).map((file) => `/uploads/products/${file.filename}`);
+  let imagePaths = (req.files || []).map((file) => `/uploads/products/${file.filename}`);
+
+  if (req.files?.length && hasCloudflareR2Config()) {
+    const uploadedImages = await uploadProductImagesToR2(req.files, (_file, index) => ({
+      type: "product",
+      vendorId: req.user.id,
+      productName: name,
+      slot: index,
+    }));
+    imagePaths = uploadedImages.map((entry) => entry.url);
+  }
 
   const product = await Product.create({
     vendor: req.user.id,
@@ -231,7 +332,19 @@ export const updateProduct = asyncHandler(async (req, res) => {
   }
 
   if (req.files?.length) {
-    const imagePaths = req.files.map((file) => `/uploads/products/${file.filename}`);
+    let imagePaths = req.files.map((file) => `/uploads/products/${file.filename}`);
+
+    if (hasCloudflareR2Config()) {
+      const uploadedImages = await uploadProductImagesToR2(req.files, (_file, index) => ({
+        type: "product",
+        vendorId: req.user.id,
+        productId: product.id,
+        productName: product.name,
+        slot: index,
+      }));
+      imagePaths = uploadedImages.map((entry) => entry.url);
+    }
+
     product.image = imagePaths[0];
     product.images = imagePaths;
   }

@@ -1,6 +1,6 @@
 # STAPS on Koyeb
 
-This repo is ready to move the backend API from Render to Koyeb while keeping the frontend on Vercel.
+This repo is configured for a Koyeb backend deployment while keeping the frontend on Vercel.
 
 ## Recommended Layout
 
@@ -32,6 +32,14 @@ Important values:
 - `MONGODB_URI=<your-mongodb-atlas-uri>`
 - `JWT_SECRET=<strong-random-secret>`
 - `PAYSTACK_CALLBACK_URL=https://your-frontend.vercel.app/payment/callback`
+- `CLOUDFLARE_R2_ACCOUNT_ID=<your-cloudflare-account-id>`
+- `CLOUDFLARE_R2_ACCESS_KEY_ID=<your-r2-access-key-id>`
+- `CLOUDFLARE_R2_SECRET_ACCESS_KEY=<your-r2-secret-access-key>`
+- `CLOUDFLARE_R2_BUCKET_NAME=<your-r2-bucket-name>`
+- `CLOUDFLARE_R2_PUBLIC_BASE_URL=https://pub-your-bucket-id.r2.dev`
+- `CLOUDFLARE_IMAGES_ACCOUNT_ID=<your-cloudflare-account-id>`
+- `CLOUDFLARE_IMAGES_API_TOKEN=<your-cloudflare-images-token>`
+- `CLOUDFLARE_IMAGES_VARIANT=public`
 - `SMTP_HOST=smtp.resend.com`
 - `SMTP_PORT=587`
 - `SMTP_SECURE=false`
@@ -42,7 +50,7 @@ Important values:
 
 ## Email Notes
 
-- Koyeb free services can use outbound SMTP on port `587`, which is a better fit for Resend SMTP than Render free web services.
+- Koyeb services can use outbound SMTP on port `587`, which fits the Resend SMTP setup used by this project.
 - Do not use a freemail sender like `gmail.com` for `MAIL_FROM`.
 - Resend should send from a verified domain you control, such as `noreply@orexmine.xyz`.
 
@@ -58,4 +66,6 @@ VITE_API_BASE_URL=https://your-koyeb-service-domain
 
 ## Production Reminder
 
-Uploads are still stored on the backend filesystem, so product images, avatars, and vendor documents should eventually move to persistent object storage for production durability.
+Product images can use Cloudflare R2 when the R2 env vars are set. Without that configuration, product uploads fall back to the backend filesystem.
+
+Shopper avatars, review images, and vendor documents can still use Cloudflare Images when the Cloudflare Images env vars are set. Without that configuration, those uploads also fall back to the backend filesystem.

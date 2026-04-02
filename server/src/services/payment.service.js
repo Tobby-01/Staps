@@ -6,6 +6,11 @@ import { ApiError } from "../utils/api-error.js";
 import { sendVendorNewOrderEmail } from "./mail.service.js";
 import { createNotification } from "./notification.service.js";
 import { verifyTransaction } from "./paystack.service.js";
+import {
+  creditWallet,
+  ensureShopperWalletAccess,
+  getWalletTransactionByReference,
+} from "./wallet.service.js";
 
 const formatOrderNumber = (orderId = "") => `#${String(orderId).slice(-6).toUpperCase()}`;
 
@@ -155,6 +160,78 @@ const finalizeVendorRegistrationPayment = async ({ payment, reference }) => {
   };
 };
 
+const finalizeWalletFundingPayment = async ({ payment, reference }) => {
+  const shopperId = String(payment.metadata?.shopperId || payment.metadata?.userId || "").trim();
+
+  if (!shopperId) {
+    throw new ApiError(400, "Wallet funding metadata is incomplete.");
+  }
+
+  const shopper = await ensureShopperWalletAccess(shopperId);
+
+  if (payment.status !== "success") {
+    throw new ApiError(400, "Wallet funding payment is not successful yet.");
+  }
+
+  const existingFunding = await getWalletTransactionByReference({
+    reference,
+    type: "wallet_funding",
+  });
+
+  if (existingFunding) {
+    return {
+      intent: "wallet_funding",
+      message: "Wallet funding already verified.",
+      wallet: {
+        balance: Math.max(0, Math.round(Number(shopper.walletBalance || 0))),
+        currency: "NGN",
+      },
+      transaction: existingFunding,
+      payment,
+    };
+  }
+
+  const amountInNaira = Math.round(Number(payment.amount || 0) / 100);
+  if (!Number.isFinite(amountInNaira) || amountInNaira <= 0) {
+    throw new ApiError(400, "Invalid wallet funding amount.");
+  }
+
+  const walletUpdate = await creditWallet({
+    userId: shopper.id,
+    amount: amountInNaira,
+    type: "wallet_funding",
+    description: "Wallet funded via Paystack",
+    reference,
+    metadata: {
+      channel: payment.channel || "paystack",
+      gatewayResponse: payment.gateway_response || "",
+    },
+  });
+
+  await createNotification({
+    recipient: shopper.id,
+    type: "wallet_funded",
+    title: "Wallet funded",
+    message: `NGN ${amountInNaira.toLocaleString()} was added to your wallet.`,
+    metadata: {
+      reference,
+      amount: amountInNaira,
+      balance: walletUpdate.balance,
+    },
+  });
+
+  return {
+    intent: "wallet_funding",
+    message: "Wallet funded successfully.",
+    wallet: {
+      balance: walletUpdate.balance,
+      currency: "NGN",
+    },
+    transaction: walletUpdate.transaction,
+    payment,
+  };
+};
+
 export const finalizePaystackPayment = async (reference) => {
   const payment = await verifyTransaction(reference);
   const paymentType = payment.metadata?.type;
@@ -165,6 +242,10 @@ export const finalizePaystackPayment = async (reference) => {
 
   if (paymentType === "vendor_registration") {
     return finalizeVendorRegistrationPayment({ payment, reference });
+  }
+
+  if (paymentType === "wallet_funding") {
+    return finalizeWalletFundingPayment({ payment, reference });
   }
 
   const order = await Order.findOne({ paystackReference: reference }).select("_id");

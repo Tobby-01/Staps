@@ -12,8 +12,31 @@ import {
   listBanks,
   resolveAccountNumber,
 } from "../services/paystack.service.js";
+import {
+  hasCloudflareImagesConfig,
+  uploadImageToCloudflare,
+} from "../services/cloudflare-images.service.js";
 import { finalizePaystackPayment } from "../services/payment.service.js";
 import { syncVendorSellingAccess } from "../services/vendor-access.service.js";
+
+const sanitizeAccountNumber = (value = "") => String(value).replace(/\D/g, "");
+
+const parsePayoutAccountNumber = (
+  value,
+  { requiredError = "Payout account number is required." } = {},
+) => {
+  const normalized = sanitizeAccountNumber(value);
+
+  if (!normalized) {
+    throw new ApiError(400, requiredError);
+  }
+
+  if (normalized.length !== 10) {
+    throw new ApiError(400, "Payout account number must be 10 digits.");
+  }
+
+  return normalized;
+};
 
 export const getVendorProfile = asyncHandler(async (req, res) => {
   const vendor = await Vendor.findOne({ user: req.user.id }).populate(
@@ -29,11 +52,13 @@ export const getVendorProfile = asyncHandler(async (req, res) => {
 });
 
 export const applyVendor = asyncHandler(async (req, res) => {
-  const { name, phone } = req.body;
+  const { name, phone, payoutAccountNumber } = req.body;
 
   if (!name || !phone) {
     throw new ApiError(400, "Name and phone are required.");
   }
+
+  const normalizedPayoutAccountNumber = parsePayoutAccountNumber(payoutAccountNumber);
 
   if (!req.file) {
     throw new ApiError(400, "ID document upload is required.");
@@ -42,10 +67,42 @@ export const applyVendor = asyncHandler(async (req, res) => {
   let vendor = await Vendor.findOne({ user: req.user.id });
 
   if (vendor) {
+    const currentPayoutAccount =
+      typeof vendor.payoutAccount?.toObject === "function"
+        ? vendor.payoutAccount.toObject()
+        : vendor.payoutAccount || {};
+    const currentPayoutAccountNumber = sanitizeAccountNumber(currentPayoutAccount.accountNumber);
+    const accountNumberChanged =
+      Boolean(currentPayoutAccountNumber) &&
+      currentPayoutAccountNumber !== normalizedPayoutAccountNumber;
+
+    if (accountNumberChanged && currentPayoutAccount.setupComplete) {
+      throw new ApiError(
+        400,
+        "Payout account is already configured. Update it from your vendor dashboard payout setup.",
+      );
+    }
+
     vendor.name = name;
     vendor.phone = phone;
     vendor.idDocumentUrl = `/uploads/vendor-docs/${req.file.filename}`;
     vendor.verified = false;
+    vendor.payoutAccount = {
+      ...currentPayoutAccount,
+      accountNumber: normalizedPayoutAccountNumber,
+      currency: currentPayoutAccount.currency || "NGN",
+    };
+
+    if (accountNumberChanged && !currentPayoutAccount.setupComplete) {
+      vendor.payoutAccount.bankCode = "";
+      vendor.payoutAccount.bankName = "";
+      vendor.payoutAccount.accountName = "";
+      vendor.payoutAccount.recipientCode = "";
+      vendor.payoutAccount.recipientId = undefined;
+      vendor.payoutAccount.setupComplete = false;
+      vendor.payoutAccount.lastSyncedAt = undefined;
+    }
+
     await vendor.save();
   } else {
     vendor = await Vendor.create({
@@ -53,6 +110,11 @@ export const applyVendor = asyncHandler(async (req, res) => {
       name,
       phone,
       idDocumentUrl: `/uploads/vendor-docs/${req.file.filename}`,
+      payoutAccount: {
+        accountNumber: normalizedPayoutAccountNumber,
+        currency: "NGN",
+        setupComplete: false,
+      },
     });
   }
 
@@ -134,20 +196,26 @@ export const listPayoutBanks = asyncHandler(async (_req, res) => {
 
 export const setupVendorPayout = asyncHandler(async (req, res) => {
   const { bankCode, accountNumber } = req.body;
+  const normalizedAccountNumber = parsePayoutAccountNumber(accountNumber, {
+    requiredError: "Bank code and account number are required.",
+  });
   const vendor = await Vendor.findOne({ user: req.user.id });
 
   if (!vendor) {
     throw new ApiError(404, "Vendor profile not found.");
   }
 
-  if (!bankCode || !accountNumber) {
+  if (!bankCode) {
     throw new ApiError(400, "Bank code and account number are required.");
   }
 
-  const resolvedAccount = await resolveAccountNumber({ accountNumber, bankCode });
+  const resolvedAccount = await resolveAccountNumber({
+    accountNumber: normalizedAccountNumber,
+    bankCode,
+  });
   const recipient = await createTransferRecipient({
     name: vendor.name,
-    accountNumber,
+    accountNumber: normalizedAccountNumber,
     bankCode,
     currency: "NGN",
   });
@@ -155,7 +223,7 @@ export const setupVendorPayout = asyncHandler(async (req, res) => {
   vendor.payoutAccount = {
     bankCode,
     bankName: recipient.details?.bank_name || vendor.payoutAccount?.bankName || "",
-    accountNumber,
+    accountNumber: normalizedAccountNumber,
     accountName: resolvedAccount.account_name,
     recipientCode: recipient.recipient_code,
     recipientId: recipient.id,
@@ -194,7 +262,17 @@ export const updateVendorBranding = asyncHandler(async (req, res) => {
   }
 
   if (req.file) {
-    user.avatarUrl = `/uploads/avatars/${req.file.filename}`;
+    let uploadedAvatar = null;
+
+    if (hasCloudflareImagesConfig()) {
+      uploadedAvatar = await uploadImageToCloudflare(req.file, {
+        type: "vendor-avatar",
+        userId: user.id,
+        vendorId: vendor.id,
+      });
+    }
+
+    user.avatarUrl = uploadedAvatar?.url || `/uploads/avatars/${req.file.filename}`;
   }
 
   vendor.brandingUpdatedAt = new Date();

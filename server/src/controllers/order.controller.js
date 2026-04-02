@@ -6,7 +6,10 @@ import { Product } from "../models/product.model.js";
 import { ApiError } from "../utils/api-error.js";
 import { asyncHandler } from "../utils/async-handler.js";
 
-import { sendShopperOrderStatusEmail } from "../services/mail.service.js";
+import {
+  sendShopperOrderStatusEmail,
+  sendVendorNewOrderEmail,
+} from "../services/mail.service.js";
 import { createNotification } from "../services/notification.service.js";
 import {
   assertCancelable,
@@ -17,9 +20,9 @@ import {
 import { listSellableVendorProfiles } from "../services/vendor-access.service.js";
 import {
   initializeTransaction,
-  refundTransaction,
 } from "../services/paystack.service.js";
 import { finalizePaystackPayment } from "../services/payment.service.js";
+import { creditWallet, debitWallet } from "../services/wallet.service.js";
 
 const formatOrderNumber = (orderId = "") => `#${String(orderId).slice(-6).toUpperCase()}`;
 
@@ -77,10 +80,62 @@ const getProductDeliveryFee = (product) => {
   return Number.isFinite(deliveryFee) ? Math.round(deliveryFee) : DEFAULT_DELIVERY_FEE;
 };
 
+const normalizePaymentMethod = (payload = {}) => {
+  const paymentMethod = String(payload.paymentMethod || "paystack").trim().toLowerCase();
+
+  if (!["paystack", "wallet"].includes(paymentMethod)) {
+    throw new ApiError(400, "Payment method must be either paystack or wallet.");
+  }
+
+  return paymentMethod;
+};
+
+const notifyVendorsForPaidOrders = async (orders = []) => {
+  for (const order of orders) {
+    await createNotification({
+      recipient: order.vendor,
+      type: "payment_confirmed",
+      title: "Payment confirmed",
+      message: "A shopper has paid for a new order.",
+      metadata: { orderId: order.id, orderNumber: formatOrderNumber(order.id) },
+    });
+
+    try {
+      const populatedOrder = await Order.findById(order.id)
+        .populate("product", "name image images")
+        .populate("user", "name email")
+        .populate("vendor", "name email");
+
+      if (populatedOrder?.vendor?.email) {
+        await sendVendorNewOrderEmail({
+          to: populatedOrder.vendor.email,
+          vendorName: populatedOrder.vendor.name,
+          shopperName: populatedOrder.user?.name || "A shopper",
+          productName: populatedOrder.product?.name || "New order",
+          productImage:
+            populatedOrder.product?.image || populatedOrder.product?.images?.[0] || "",
+          amountPaid: populatedOrder.totalAmount,
+          quantity: populatedOrder.quantity,
+          deliveryDetails: populatedOrder.deliveryDetails,
+          orderId: populatedOrder.id,
+        });
+      }
+    } catch (error) {
+      console.error("Failed to send vendor order email");
+      console.error(error);
+    }
+  }
+};
+
 export const initializeOrderPayment = asyncHandler(async (req, res) => {
   const checkoutItems = normalizeCheckoutItems(req.body);
   if (!checkoutItems.length) {
     throw new ApiError(400, "Select at least one product to checkout.");
+  }
+  const paymentMethod = normalizePaymentMethod(req.body);
+
+  if (paymentMethod === "wallet" && req.user.role !== ROLES.USER) {
+    throw new ApiError(403, "Wallet checkout is only available for shopper accounts.");
   }
 
   const deliveryDetails = normalizeDeliveryDetails(req.body.deliveryDetails);
@@ -125,12 +180,81 @@ export const initializeOrderPayment = asyncHandler(async (req, res) => {
   });
 
   let orders = await Order.create(ordersPayload);
+  const checkoutTotal = Math.round(
+    orders.reduce((sum, order) => sum + Number(order.totalAmount || 0), 0),
+  );
+
+  if (paymentMethod === "wallet") {
+    const walletReference = `wallet-order-${req.user.id}-${Date.now()}`.toLowerCase();
+
+    try {
+      const walletDebit = await debitWallet({
+        userId: req.user.id,
+        amount: checkoutTotal,
+        type: "wallet_order_payment",
+        description:
+          orders.length > 1
+            ? `Wallet payment for ${orders.length} orders.`
+            : `Wallet payment for order ${formatOrderNumber(orders[0]?.id)}`,
+        reference: walletReference,
+        metadata: {
+          orderIds: orders.map((order) => order.id),
+          productIds: orders.map((order) => order.product.toString()),
+        },
+      });
+
+      const paidAt = new Date();
+      await Order.updateMany(
+        { _id: { $in: orders.map((order) => order._id) } },
+        {
+          $set: {
+            isPaid: true,
+            status: ORDER_STATUS.PAID,
+            paidAt,
+            paymentChannel: "wallet",
+          },
+        },
+      );
+
+      orders = orders.map((order) => ({
+        ...order.toObject(),
+        isPaid: true,
+        status: ORDER_STATUS.PAID,
+        paidAt,
+        paymentChannel: "wallet",
+      }));
+
+      await notifyVendorsForPaidOrders(orders);
+
+      return res.status(201).json({
+        success: true,
+        message:
+          orders.length > 1
+            ? "Orders paid successfully from wallet and sent to vendor queues."
+            : "Order paid successfully from wallet and sent to the vendor queue.",
+        order: orders[0],
+        orders,
+        wallet: {
+          balance: walletDebit.balance,
+          transaction: walletDebit.transaction,
+        },
+      });
+    } catch (error) {
+      await Order.deleteMany({
+        _id: { $in: orders.map((order) => order._id) },
+        isPaid: false,
+      });
+
+      throw error;
+    }
+  }
+
   let transaction;
 
   try {
     transaction = await initializeTransaction({
       email: req.user.email,
-      amount: Math.round(orders.reduce((sum, order) => sum + Number(order.totalAmount || 0), 0) * 100),
+      amount: checkoutTotal * 100,
       metadata: {
         type: "order_payment",
         orderId: orders[0]?.id,
@@ -145,11 +269,12 @@ export const initializeOrderPayment = asyncHandler(async (req, res) => {
 
     await Order.updateMany(
       { _id: { $in: orders.map((order) => order._id) } },
-      { $set: { paystackReference: transaction.reference } },
+      { $set: { paystackReference: transaction.reference, paymentChannel: "paystack" } },
     );
 
     orders = orders.map((order) => {
       order.paystackReference = transaction.reference;
+      order.paymentChannel = "paystack";
       return order;
     });
   } catch (error) {
@@ -161,7 +286,7 @@ export const initializeOrderPayment = asyncHandler(async (req, res) => {
     throw error;
   }
 
-  res.status(201).json({
+  return res.status(201).json({
     success: true,
     message:
       orders.length > 1
@@ -472,8 +597,31 @@ export const cancelOrder = asyncHandler(async (req, res) => {
 
   assertCancelable(order);
 
-  if (order.isPaid && order.paystackReference) {
-    await refundTransaction(order.paystackReference, order.totalAmount * 100);
+  let walletRefund = null;
+  if (order.isPaid) {
+    walletRefund = await creditWallet({
+      userId: order.user,
+      amount: Math.round(Number(order.totalAmount || 0)),
+      type: "order_refund",
+      description: `Refund for canceled order ${formatOrderNumber(order.id)}.`,
+      reference: `refund-${order.id}`,
+      metadata: {
+        orderId: order.id,
+        paymentChannel: order.paymentChannel || "paystack",
+      },
+    });
+
+    await createNotification({
+      recipient: order.user,
+      type: "wallet_refund",
+      title: "Refund sent to wallet",
+      message: `Refund of NGN ${Number(order.totalAmount || 0).toLocaleString()} was added to your wallet.`,
+      metadata: {
+        orderId: order.id,
+        orderNumber: formatOrderNumber(order.id),
+        walletBalance: walletRefund.balance,
+      },
+    });
   }
 
   order.status = ORDER_STATUS.CANCELED;
@@ -490,8 +638,16 @@ export const cancelOrder = asyncHandler(async (req, res) => {
 
   res.json({
     success: true,
-    message: "Order canceled successfully.",
+    message: walletRefund
+      ? "Order canceled successfully. Refund has been added to your wallet."
+      : "Order canceled successfully.",
     order,
+    wallet: walletRefund
+      ? {
+          balance: walletRefund.balance,
+          transaction: walletRefund.transaction,
+        }
+      : undefined,
   });
 });
 

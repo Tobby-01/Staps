@@ -2,6 +2,10 @@ import { ORDER_STATUS } from "../constants/order.js";
 import { Order } from "../models/order.model.js";
 import { Product } from "../models/product.model.js";
 import { Review } from "../models/review.model.js";
+import {
+  hasCloudflareImagesConfig,
+  uploadImageToCloudflare,
+} from "../services/cloudflare-images.service.js";
 import { ApiError } from "../utils/api-error.js";
 import { asyncHandler } from "../utils/async-handler.js";
 
@@ -23,13 +27,24 @@ export const createReview = asyncHandler(async (req, res) => {
     throw new ApiError(403, "Only completed orders can be reviewed.");
   }
 
+  let uploadedReviewImage = null;
+  if (req.file && hasCloudflareImagesConfig()) {
+    uploadedReviewImage = await uploadImageToCloudflare(req.file, {
+      type: "review",
+      productId,
+      userId: req.user.id,
+    });
+  }
+
   const review = await Review.create({
     user: req.user.id,
     vendor: product.vendor,
     product: product.id,
     rating: Number(rating),
     comment,
-    imageUrl: req.file ? `/uploads/products/${req.file.filename}` : undefined,
+    imageUrl: req.file
+      ? uploadedReviewImage?.url || `/uploads/products/${req.file.filename}`
+      : undefined,
   });
 
   res.status(201).json({

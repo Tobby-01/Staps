@@ -28,12 +28,21 @@ const formatNotificationTime = (value) => {
   return notificationTimeFormatter.format(date);
 };
 
+const formatWalletAmount = (value) => Number(value || 0).toLocaleString();
+
 export const ShopperDashboard = () => {
   const { user, refreshUser } = useAuth();
   const [orders, setOrders] = useState([]);
   const [notifications, setNotifications] = useState([]);
   const [conversations, setConversations] = useState([]);
   const [reviews, setReviews] = useState([]);
+  const [wallet, setWallet] = useState({
+    balance: 0,
+    currency: "NGN",
+    transactions: [],
+  });
+  const [walletFundAmount, setWalletFundAmount] = useState("2000");
+  const [walletFunding, setWalletFunding] = useState(false);
   const [notice, setNotice] = useState("");
   const [error, setError] = useState("");
   const [profileForm, setProfileForm] = useState({
@@ -55,18 +64,20 @@ export const ShopperDashboard = () => {
 
   const loadDashboard = async ({ silent = false } = {}) => {
     try {
-      const [ordersResponse, notificationsResponse, reviewsResponse, conversationsResponse] =
+      const [ordersResponse, notificationsResponse, reviewsResponse, conversationsResponse, walletResponse] =
         await Promise.all([
           apiRequest("/api/orders"),
           apiRequest("/api/notifications"),
           apiRequest(`/api/reviews?userId=${user.id}`),
           apiRequest("/api/chat/conversations"),
+          apiRequest("/api/wallet"),
         ]);
 
       setOrders(ordersResponse.orders || []);
       setNotifications(notificationsResponse.notifications || []);
       setReviews(reviewsResponse.reviews || []);
       setConversations(conversationsResponse.conversations || []);
+      setWallet(walletResponse.wallet || { balance: 0, currency: "NGN", transactions: [] });
       setError("");
     } catch (requestError) {
       if (!silent) {
@@ -271,6 +282,27 @@ export const ShopperDashboard = () => {
     }
   };
 
+  const initializeWalletFunding = async (event) => {
+    event.preventDefault();
+
+    try {
+      setWalletFunding(true);
+      setError("");
+      setNotice("");
+      const response = await apiRequest("/api/wallet/fund/initialize", {
+        method: "POST",
+        body: JSON.stringify({ amount: walletFundAmount }),
+      });
+
+      setNotice("Redirecting to Paystack to fund your wallet...");
+      window.location.href = response.payment.authorization_url;
+    } catch (requestError) {
+      setError(requestError.message);
+    } finally {
+      setWalletFunding(false);
+    }
+  };
+
   const submitReview = async (event) => {
     event.preventDefault();
 
@@ -316,6 +348,82 @@ export const ShopperDashboard = () => {
           <span className={error ? "text-red-600" : "text-[#6e54ef]"}>{error || notice}</span>
         </div>
       )}
+
+      <section id="wallet" className="surface-card scroll-mt-28 p-6">
+        <p className="text-sm font-bold uppercase tracking-[0.25em] text-[#6e54ef]">
+          Wallet
+        </p>
+        <div className="mt-2 flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+          <div>
+            <h2 className="font-display text-2xl font-extrabold">Your balance</h2>
+            <p className="mt-2 text-sm text-staps-ink/60">
+              Fund with Paystack and use wallet balance for fast checkout. Refunds from canceled paid
+              orders are credited here.
+            </p>
+            <p className="mt-4 font-display text-4xl font-extrabold text-staps-ink">
+              {wallet.currency || "NGN"} {formatWalletAmount(wallet.balance)}
+            </p>
+          </div>
+
+          <form
+            onSubmit={initializeWalletFunding}
+            className="w-full max-w-[360px] rounded-[1.5rem] bg-[#f8f9fd] p-4"
+          >
+            <p className="text-xs font-bold uppercase tracking-[0.16em] text-[#6e54ef]">
+              Fund wallet
+            </p>
+            <div className="mt-3 flex gap-2">
+              <input
+                className="field"
+                type="number"
+                min="500"
+                step="100"
+                value={walletFundAmount}
+                onChange={(event) => setWalletFundAmount(event.target.value)}
+                placeholder="Amount"
+              />
+              <button className="primary-button whitespace-nowrap" type="submit" disabled={walletFunding}>
+                {walletFunding ? "Starting..." : "Fund now"}
+              </button>
+            </div>
+            <p className="mt-2 text-xs text-staps-ink/55">
+              Minimum top-up: NGN 500
+            </p>
+          </form>
+        </div>
+
+        <div className="mt-6 space-y-3">
+          <h3 className="font-display text-xl font-bold">Recent wallet activity</h3>
+          {wallet.transactions?.length ? (
+            wallet.transactions.map((entry) => (
+              <div key={entry._id} className="rounded-2xl border border-staps-ink/10 bg-white p-4">
+                <div className="flex flex-wrap items-center justify-between gap-3">
+                  <div>
+                    <p className="font-semibold text-staps-ink">{entry.description}</p>
+                    <p className="mt-1 text-xs uppercase tracking-[0.14em] text-staps-ink/45">
+                      {formatNotificationTime(entry.createdAt)}
+                    </p>
+                  </div>
+                  <div className="text-right">
+                    <p
+                      className={`text-lg font-extrabold ${
+                        entry.direction === "credit" ? "text-emerald-600" : "text-[#6e54ef]"
+                      }`}
+                    >
+                      {entry.direction === "credit" ? "+" : "-"}NGN {formatWalletAmount(entry.amount)}
+                    </p>
+                    <p className="text-xs text-staps-ink/55">
+                      Balance: NGN {formatWalletAmount(entry.balanceAfter)}
+                    </p>
+                  </div>
+                </div>
+              </div>
+            ))
+          ) : (
+            <p className="text-sm text-staps-ink/60">No wallet transactions yet.</p>
+          )}
+        </div>
+      </section>
 
       <section className="grid gap-6 xl:grid-cols-[0.9fr_1.1fr]">
         <div className="space-y-6">

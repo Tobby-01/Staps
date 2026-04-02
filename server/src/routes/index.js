@@ -11,6 +11,7 @@ import productRoutes from "./product.routes.js";
 import reviewRoutes from "./review.routes.js";
 import userRoutes from "./user.routes.js";
 import vendorRoutes from "./vendor.routes.js";
+import walletRoutes from "./wallet.routes.js";
 
 const router = Router();
 
@@ -21,6 +22,7 @@ router.use("/vendors", vendorRoutes);
 router.use("/products", productRoutes);
 router.use("/orders", orderRoutes);
 router.use("/payments", paymentRoutes);
+router.use("/wallet", walletRoutes);
 router.use("/reviews", reviewRoutes);
 router.use("/follows", followRoutes);
 router.use("/notifications", notificationRoutes);

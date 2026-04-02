@@ -88,6 +88,11 @@ export const PaymentCallbackPage = () => {
           Go to vendor dashboard
         </Link>
       ) : null}
+      {!status.error && status.intent === "wallet_funding" ? (
+        <Link to="/dashboard#wallet" className="mt-6 inline-flex secondary-button">
+          Open wallet
+        </Link>
+      ) : null}
     </div>
   );
 };

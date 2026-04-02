@@ -11,6 +11,14 @@ dotenv.config({
 });
 
 const trimTrailingSlash = (value = "") => String(value).trim().replace(/\/+$/, "");
+const toHttpsUrl = (value = "") => {
+  const trimmed = trimTrailingSlash(value);
+  if (!trimmed) {
+    return "";
+  }
+
+  return /^https?:\/\//i.test(trimmed) ? trimmed : `https://${trimmed}`;
+};
 const splitUrlList = (value = "") =>
   String(value)
     .split(",")
@@ -28,7 +36,12 @@ const clientUrls = configuredClientUrls.length
 const primaryClientUrl =
   clientUrls.find((url) => !isLocalUrl(url)) || clientUrls[0] || "http://localhost:5173";
 const serverUrl =
-  trimTrailingSlash(process.env.SERVER_URL || process.env.RENDER_EXTERNAL_URL || "") ||
+  trimTrailingSlash(
+    process.env.SERVER_URL ||
+      toHttpsUrl(process.env.KOYEB_PUBLIC_DOMAIN || "") ||
+      process.env.RENDER_EXTERNAL_URL ||
+      "",
+  ) ||
   `http://localhost:${process.env.PORT || 5000}`;
 
 export const env = {
@@ -50,6 +63,11 @@ export const env = {
   smtpConnectionTimeoutMs: Number(process.env.SMTP_CONNECTION_TIMEOUT_MS || 10000),
   smtpGreetingTimeoutMs: Number(process.env.SMTP_GREETING_TIMEOUT_MS || 10000),
   smtpSocketTimeoutMs: Number(process.env.SMTP_SOCKET_TIMEOUT_MS || 15000),
+  cloudflareR2AccountId: process.env.CLOUDFLARE_R2_ACCOUNT_ID || "",
+  cloudflareR2AccessKeyId: process.env.CLOUDFLARE_R2_ACCESS_KEY_ID || "",
+  cloudflareR2SecretAccessKey: process.env.CLOUDFLARE_R2_SECRET_ACCESS_KEY || "",
+  cloudflareR2BucketName: process.env.CLOUDFLARE_R2_BUCKET_NAME || "",
+  cloudflareR2PublicBaseUrl: trimTrailingSlash(process.env.CLOUDFLARE_R2_PUBLIC_BASE_URL || ""),
   cloudflareImagesAccountId: process.env.CLOUDFLARE_IMAGES_ACCOUNT_ID || "",
   cloudflareImagesApiToken: process.env.CLOUDFLARE_IMAGES_API_TOKEN || "",
   cloudflareImagesVariant: process.env.CLOUDFLARE_IMAGES_VARIANT || "",

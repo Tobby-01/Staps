@@ -101,26 +101,3 @@ export const uploadImagesToCloudflare = async (files, metadataFactory = () => ({
   Promise.all(
     (files || []).map((file, index) => uploadImageToCloudflare(file, metadataFactory(file, index))),
   );
-
-export const deleteImageFromCloudflare = async (imageId) => {
-  if (!hasCloudflareImagesConfig() || !imageId) {
-    return;
-  }
-
-  const endpoint = `https://api.cloudflare.com/client/v4/accounts/${env.cloudflareImagesAccountId}/images/v1/${imageId}`;
-
-  const response = await fetch(endpoint, {
-    method: "DELETE",
-    headers: {
-      Authorization: `Bearer ${env.cloudflareImagesApiToken}`,
-    },
-  });
-
-  if (!response.ok) {
-    const payload = await response.json().catch(() => ({}));
-    throw new ApiError(
-      response.status || 500,
-      payload.errors?.[0]?.message || payload.message || "Failed to delete Cloudflare image.",
-    );
-  }
-};

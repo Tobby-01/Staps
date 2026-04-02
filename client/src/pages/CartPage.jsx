@@ -13,13 +13,14 @@ import { useAuth } from "../state/AuthContext.jsx";
 import { useCart } from "../state/CartContext.jsx";
 
 export const CartPage = () => {
-  const { user } = useAuth();
+  const { user, refreshUser } = useAuth();
   const { items, subtotal, deliveryTotal, grandTotal, removeFromCart, updateQuantity } = useCart();
   const navigate = useNavigate();
   const location = useLocation();
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
   const [checkoutPending, setCheckoutPending] = useState(false);
+  const [paymentMethod, setPaymentMethod] = useState("wallet");
   const [deliveryDetails, setDeliveryDetails] = useState({
     recipientName: "",
     phone: "",
@@ -59,8 +60,21 @@ export const CartPage = () => {
             quantity: item.quantity,
           })),
           deliveryDetails,
+          paymentMethod,
         }),
       });
+
+      if (paymentMethod === "wallet") {
+        selectedItems.forEach((item) => removeFromCart(item.id || item._id));
+        await refreshUser();
+        setMessage(
+          response.message ||
+            (selectedItems.length > 1
+              ? "Orders paid from wallet successfully."
+              : "Order paid from wallet successfully."),
+        );
+        return;
+      }
 
       setMessage(
         selectedItems.length > 1
@@ -74,6 +88,9 @@ export const CartPage = () => {
       setCheckoutPending(false);
     }
   };
+
+  const walletBalance = Math.max(0, Math.round(Number(user?.walletBalance || 0)));
+  const hasEnoughWalletBalance = walletBalance >= Math.round(Number(grandTotal || 0));
 
   if (user?.role === "vendor") {
     return (
@@ -151,6 +168,45 @@ export const CartPage = () => {
                 setDeliveryDetails((current) => ({ ...current, notes: event.target.value }))
               }
             />
+          </div>
+        </div>
+        <div className="mt-6 rounded-[1.75rem] border border-staps-ink/10 bg-white p-5">
+          <h2 className="font-display text-2xl font-bold">Payment method</h2>
+          <div className="mt-4 grid gap-3 md:grid-cols-2">
+            <button
+              type="button"
+              onClick={() => setPaymentMethod("wallet")}
+              className={`rounded-2xl border px-4 py-4 text-left transition ${
+                paymentMethod === "wallet"
+                  ? "border-transparent bg-[#6e54ef] text-white shadow-lg shadow-[#6e54ef]/25"
+                  : "border-staps-ink/10 bg-white text-staps-ink"
+              }`}
+            >
+              <p className="text-sm font-bold uppercase tracking-[0.18em]">
+                Wallet
+              </p>
+              <p className="mt-2 text-xl font-extrabold">
+                NGN {formatNaira(walletBalance)}
+              </p>
+              <p className={`mt-1 text-sm ${paymentMethod === "wallet" ? "text-white/85" : "text-staps-ink/60"}`}>
+                {hasEnoughWalletBalance ? "Ready for this checkout" : "Insufficient wallet balance"}
+              </p>
+            </button>
+            <button
+              type="button"
+              onClick={() => setPaymentMethod("paystack")}
+              className={`rounded-2xl border px-4 py-4 text-left transition ${
+                paymentMethod === "paystack"
+                  ? "border-transparent bg-[#ea6b2d] text-white shadow-lg shadow-[#ea6b2d]/25"
+                  : "border-staps-ink/10 bg-white text-staps-ink"
+              }`}
+            >
+              <p className="text-sm font-bold uppercase tracking-[0.18em]">Paystack</p>
+              <p className="mt-2 text-xl font-extrabold">Card / Transfer</p>
+              <p className={`mt-1 text-sm ${paymentMethod === "paystack" ? "text-white/85" : "text-staps-ink/60"}`}>
+                Secure gateway checkout
+              </p>
+            </button>
           </div>
         </div>
         <div className="mt-6 space-y-4">
@@ -272,9 +328,13 @@ export const CartPage = () => {
           className="primary-button mt-6 w-full"
           type="button"
           onClick={() => checkoutItems(items)}
-          disabled={!items.length || checkoutPending}
+          disabled={!items.length || checkoutPending || (paymentMethod === "wallet" && !hasEnoughWalletBalance)}
         >
-          {checkoutPending ? "Preparing checkout..." : `Checkout all items (${items.length})`}
+          {checkoutPending
+            ? "Preparing checkout..."
+            : paymentMethod === "wallet"
+              ? `Pay from wallet (${items.length})`
+              : `Checkout all items (${items.length})`}
         </button>
         {(message || error) && (
           <p className={`mt-6 text-sm ${error ? "text-red-600" : "text-staps-orange"}`}>

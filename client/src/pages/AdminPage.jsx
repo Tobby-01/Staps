@@ -353,6 +353,7 @@ export const AdminPage = () => {
           {vendors.map((vendor) => {
             const noteValue = vendorNotes[vendor._id] || "";
             const hoursValue = suspensionHours[vendor._id] || "24";
+            const payoutAccountNumber = vendor.payoutAccount?.accountNumber || "";
             const busyAction =
               actionKey === `approve-${vendor._id}` ||
               actionKey === `suspend-${vendor._id}` ||
@@ -385,6 +386,11 @@ export const AdminPage = () => {
                       {vendor.user?.email || "No email"} | Payment: {vendor.paymentStatus} | Payout:{" "}
                       {vendor.payoutAccount?.setupComplete ? "Ready" : "Not configured"}
                     </p>
+                    {payoutAccountNumber && (
+                      <p className="mt-1 text-sm text-staps-ink/60">
+                        Payout account number: {payoutAccountNumber}
+                      </p>
+                    )}
 
                     {vendor.sellingRestrictionReason && (
                       <p className="mt-2 text-sm text-staps-ink/70">

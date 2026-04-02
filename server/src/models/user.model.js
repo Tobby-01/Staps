@@ -37,6 +37,11 @@ const userSchema = new mongoose.Schema(
     },
     avatarUrl: String,
     avatarImageId: String,
+    walletBalance: {
+      type: Number,
+      default: 0,
+      min: 0,
+    },
     isEmailVerified: {
       type: Boolean,
       default: false,
