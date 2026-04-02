@@ -68,6 +68,24 @@ const splitName = (name = "") => {
   };
 };
 
+const normalizeDedicatedAccountPayload = (value = {}) => {
+  if (!value?.account_number) {
+    return null;
+  }
+
+  return {
+    dedicatedAccountId: Number(value.id) || undefined,
+    accountNumber: value.account_number || "",
+    accountName: value.account_name || "",
+    bankName: value.bank?.name || "",
+    bankCode: value.bank?.slug || "",
+    currency: value.currency || "NGN",
+    active: value.active !== false,
+    assignedAt: value.created_at ? new Date(value.created_at) : new Date(),
+    lastSyncedAt: new Date(),
+  };
+};
+
 export const ensureShopperWalletAccess = async (userId) => {
   const user = await getWalletUserById(userId);
   if (user.role !== ROLES.USER) {
@@ -214,6 +232,20 @@ export const provisionWalletFundingAccount = async (userId) => {
 
     if (matchedCustomer?.customer_code) {
       customerCode = matchedCustomer.customer_code;
+
+      const existingDedicatedAccount = normalizeDedicatedAccountPayload(
+        matchedCustomer.dedicated_account || {},
+      );
+
+      if (existingDedicatedAccount?.accountNumber) {
+        user.walletFundingAccount = {
+          provider: "paystack",
+          customerCode,
+          ...existingDedicatedAccount,
+        };
+        await user.save();
+        return formatFundingAccountPayload(user.walletFundingAccount);
+      }
     } else {
       const createdCustomer = await createCustomer({
         email: user.email,
@@ -245,18 +277,16 @@ export const provisionWalletFundingAccount = async (userId) => {
     throw error;
   }
 
+  const normalizedDedicatedAccount = normalizeDedicatedAccountPayload(dedicatedAccount || {});
+
+  if (!normalizedDedicatedAccount?.accountNumber) {
+    throw new ApiError(502, "Wallet funding account could not be created at the moment.");
+  }
+
   user.walletFundingAccount = {
     provider: "paystack",
     customerCode,
-    dedicatedAccountId: Number(dedicatedAccount.id) || undefined,
-    accountNumber: dedicatedAccount.account_number || "",
-    accountName: dedicatedAccount.account_name || "",
-    bankName: dedicatedAccount.bank?.name || "",
-    bankCode: dedicatedAccount.bank?.slug || "",
-    currency: dedicatedAccount.currency || "NGN",
-    active: dedicatedAccount.active !== false,
-    assignedAt: dedicatedAccount.created_at ? new Date(dedicatedAccount.created_at) : new Date(),
-    lastSyncedAt: new Date(),
+    ...normalizedDedicatedAccount,
   };
 
   await user.save();
