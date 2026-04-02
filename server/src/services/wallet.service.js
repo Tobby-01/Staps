@@ -8,6 +8,8 @@ import {
   listCustomersByEmail,
 } from "./paystack.service.js";
 
+const walletFundingAutoSyncIntervalMs = 6 * 60 * 60 * 1000;
+
 const normalizeWalletAmount = (value, { fieldName = "Amount" } = {}) => {
   const parsedValue = Number(value);
 
@@ -196,14 +198,26 @@ export const listWalletTransactions = async (userId, { limit = 25 } = {}) => {
   return WalletTransaction.find({ user: userId }).sort({ createdAt: -1 }).limit(normalizedLimit).lean();
 };
 
-export const getWalletSummary = async (userId, { limit = 25 } = {}) => {
+export const getWalletSummary = async (
+  userId,
+  { limit = 25, autoProvisionFundingAccount = false } = {},
+) => {
   const user = await ensureShopperWalletAccess(userId);
   const transactions = await listWalletTransactions(userId, { limit });
+  let fundingAccount = formatFundingAccountPayload(user.walletFundingAccount);
+
+  if (autoProvisionFundingAccount && !fundingAccount) {
+    try {
+      fundingAccount = await provisionWalletFundingAccount(userId, { force: false });
+    } catch (_error) {
+      fundingAccount = null;
+    }
+  }
 
   return {
     balance: Math.max(0, Math.round(Number(user.walletBalance || 0))),
     currency: "NGN",
-    fundingAccount: formatFundingAccountPayload(user.walletFundingAccount),
+    fundingAccount,
     transactions,
   };
 };
@@ -214,11 +228,21 @@ export const getWalletFundingAccount = async (userId) => {
   return formatFundingAccountPayload(user.walletFundingAccount);
 };
 
-export const provisionWalletFundingAccount = async (userId) => {
+export const provisionWalletFundingAccount = async (userId, { force = false } = {}) => {
   const user = await ensureShopperWalletAccess(userId);
 
   if (user.walletFundingAccount?.accountNumber) {
     return formatFundingAccountPayload(user.walletFundingAccount);
+  }
+
+  const lastSyncedAtMs = user.walletFundingAccount?.lastSyncedAt
+    ? new Date(user.walletFundingAccount.lastSyncedAt).getTime()
+    : 0;
+  const isRecentSync =
+    Number.isFinite(lastSyncedAtMs) && Date.now() - lastSyncedAtMs < walletFundingAutoSyncIntervalMs;
+
+  if (!force && user.walletFundingAccount?.customerCode && isRecentSync) {
+    return null;
   }
 
   const { firstName, lastName } = splitName(user.name);
@@ -268,6 +292,19 @@ export const provisionWalletFundingAccount = async (userId) => {
     });
   } catch (error) {
     if (/dedicated\s*nuban\s+is\s+not\s+available/i.test(String(error?.message || ""))) {
+      user.walletFundingAccount = {
+        ...(user.walletFundingAccount || {}),
+        provider: "paystack",
+        customerCode,
+        active: false,
+        lastSyncedAt: new Date(),
+      };
+      await user.save();
+
+      if (!force) {
+        return null;
+      }
+
       throw new ApiError(
         400,
         "Personal funding accounts are not enabled on this payment profile yet. Enable Dedicated Virtual Accounts on Paystack or continue funding via Paystack checkout.",

@@ -448,7 +448,8 @@ export const ShopperDashboard = () => {
                 Personal funding account
               </p>
               <p className="mt-1 text-sm text-staps-ink/60">
-                Transfer directly to your assigned account and Paystack will credit your wallet.
+                STAPS can auto-generate this from your profile. Transfer directly to your assigned
+                account and Paystack will credit your wallet.
               </p>
             </div>
             {!wallet.fundingAccount?.accountNumber ? (

@@ -12,6 +12,7 @@ import {
 export const getMyWallet = asyncHandler(async (req, res) => {
   const wallet = await getWalletSummary(req.user.id, {
     limit: req.query.limit,
+    autoProvisionFundingAccount: true,
   });
 
   res.json({
@@ -62,7 +63,7 @@ export const getMyWalletFundingAccount = asyncHandler(async (req, res) => {
 export const provisionMyWalletFundingAccount = asyncHandler(async (req, res) => {
   await ensureShopperWalletAccess(req.user.id);
 
-  const fundingAccount = await provisionWalletFundingAccount(req.user.id);
+  const fundingAccount = await provisionWalletFundingAccount(req.user.id, { force: true });
 
   res.json({
     success: true,
